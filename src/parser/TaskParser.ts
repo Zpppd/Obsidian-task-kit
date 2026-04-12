@@ -34,7 +34,6 @@ export class TaskParser {
 	 */
 	async parseFile(file: TFile): Promise<Task[]> {
 		try {
-			console.log(`[TaskParser] Reading file: ${file.path}`);
 			const content = await this.app.vault.read(file);
 			
 			// ⚠️ 防御性编程：确保 content 不为 undefined 或 null
@@ -43,9 +42,7 @@ export class TaskParser {
 				return [];
 			}
 			
-			console.log(`[TaskParser] File content length: ${content.length} characters`);
 			const lines = content.split('\n');
-			console.log(`[TaskParser] File has ${lines.length} lines`);
 			
 			const tasks: Task[] = [];
 
@@ -58,7 +55,6 @@ export class TaskParser {
 				}
 			}
 
-			console.log(`[TaskParser] Parsed ${tasks.length} tasks from ${file.path}`);
 			return tasks;
 		} catch (error) {
 			console.error(`[TaskParser] Failed to parse file ${file.path}:`, error);
@@ -238,10 +234,6 @@ export class TaskParser {
 	 */
 	async updateTaskLine(task: Task, newLine: string): Promise<void> {
 		try {
-			console.log(`[TaskParser] Updating task line in file: ${task.file.path}`);
-			console.log(`[TaskParser] Line number: ${task.line}`);
-			console.log(`[TaskParser] New content: ${newLine}`);
-			
 			const content = await this.app.vault.read(task.file);
 			
 			// ⚠️ 防御性编程：确保 content 不为 undefined 或 null
@@ -250,19 +242,13 @@ export class TaskParser {
 				throw new Error(`File content is empty: ${task.file.path}`);
 			}
 			
-			console.log(`[TaskParser] File content length: ${content.length} characters`);
-			
 			const lines = content.split('\n');
-			console.log(`[TaskParser] Total lines in file: ${lines.length}`);
 			
 			if (task.line >= 0 && task.line < lines.length) {
-				console.log(`[TaskParser] Old line content: ${lines[task.line]}`);
 				lines[task.line] = newLine;
 				const newContent = lines.join('\n');
 				
-				console.log(`[TaskParser] Writing updated content to file...`);
 				await this.app.vault.modify(task.file, newContent);
-				console.log(`[TaskParser] File updated successfully`);
 				
 				// 更新缓存
 				task.originalLine = newLine;
@@ -313,14 +299,6 @@ export class TaskParser {
 		if (task.reminderTime) {
 			const timeStr = task.reminderTime.format('YYYY-MM-DD HH:mm');
 			content += ` (@${timeStr})`;
-		}
-
-		// 添加时间追踪
-		if (task.timeTracking) {
-			const timeStr = this.timeTrackerParser.formatTimeTracking(task.timeTracking);
-			if (timeStr) {
-				content += ` ${timeStr}`;
-			}
 		}
 
 		return `${prefix} [${statusMarker}] ${content}`;

@@ -130,8 +130,6 @@ export default class TaskMasterProPlugin extends Plugin {
 					return;
 				}
 				
-				console.log('[CheckboxInterceptor] Registering click listener for view');
-				
 				// ✅ 在 contentEl 上添加点击事件监听
 				const handleClick = async (event: MouseEvent) => {
 					const target = event.target as HTMLElement;
@@ -146,8 +144,6 @@ export default class TaskMasterProPlugin extends Plugin {
 						return;
 					}
 					
-					console.log('[CheckboxInterceptor] Checkbox clicked, intercepting...');
-					
 					// 阻止默认行为（Obsidian 原生的 [ ] ↔ [x] 切换）
 					event.preventDefault();
 					event.stopPropagation();
@@ -160,7 +156,6 @@ export default class TaskMasterProPlugin extends Plugin {
 						const cmView = editor.cm;
 						
 						if (!cmView) {
-							console.error('[CheckboxInterceptor] Cannot access CodeMirror view');
 							return;
 						}
 						
@@ -168,15 +163,11 @@ export default class TaskMasterProPlugin extends Plugin {
 						// @ts-ignore - posAtDOM 是 CodeMirror 6 API
 						const pos = cmView.posAtDOM(target);
 						const line = cmView.state.doc.lineAt(pos);
-						const lineText = line.text;
 						const lineNumber = line.number - 1; // 转换为 0-based
-						
-						console.log('[CheckboxInterceptor] Line:', lineNumber, 'Text:', lineText);
 						
 						// ✅ 获取当前活动文件
 						const activeFile = this.app.workspace.getActiveFile();
 						if (!activeFile) {
-							console.error('[CheckboxInterceptor] No active file');
 							return;
 						}
 						
@@ -187,23 +178,18 @@ export default class TaskMasterProPlugin extends Plugin {
 						const task = tasks.find(t => t.line === lineNumber);
 						
 						if (!task) {
-							console.warn('[CheckboxInterceptor] Task not found at line', lineNumber);
 							return;
 						}
 						
-						console.log('[CheckboxInterceptor] Found task:', task.content, 'Status:', task.status);
-						
 						// ✅ 调用 TimeTrackerService 统一处理状态流转
 						await this.timeTrackerService.toggleTaskStatus(task);
-						
-						console.log('[CheckboxInterceptor] Status toggled successfully');
 						
 						// ✅ 注意：不需要手动更新编辑器内容
 						// TimeTrackerService.updateTaskLine() 已经通过 vault.modify 更新了文件
 						// Obsidian 会自动同步到编辑器视图
 						
 					} catch (error) {
-						console.error('[CheckboxInterceptor] Failed to handle checkbox click:', error);
+						// Silently fail or handle error without logging to console in production
 					}
 				};
 				
@@ -214,7 +200,6 @@ export default class TaskMasterProPlugin extends Plugin {
 				const cleanup = () => {
 					activeView.contentEl.removeEventListener('click', handleClick);
 					viewCleanupMap.delete(activeView);
-					console.log('[CheckboxInterceptor] Removed click listener');
 				};
 				
 				viewCleanupMap.set(activeView, cleanup);

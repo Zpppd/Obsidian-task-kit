@@ -144,40 +144,6 @@ export class TimeTrackerParser {
 	}
 
 	/**
-	 * 格式化时间追踪信息为显示文本
-	 */
-	formatTimeTracking(timeTracking: TimeTracking, format: string = 'range'): string {
-		if (!timeTracking.startTime) {
-			return '';
-		}
-
-		switch (format) {
-			case 'range':
-				if (timeTracking.endTime) {
-					const start = timeTracking.startTime.format('HH:mm');
-					const end = timeTracking.endTime.format('HH:mm');
-					return `[${start} - ${end}]`;
-				} else {
-					const start = timeTracking.startTime.format('HH:mm');
-					return `[开始：${start}]`;
-				}
-
-			case 'duration':
-				if (timeTracking.durationMinutes !== undefined) {
-					return `[⏱️ ${timeTracking.durationMinutes} 分钟]`;
-				} else if (timeTracking.startTime) {
-					const now = moment();
-					const duration = now.diff(timeTracking.startTime, 'minutes');
-					return `[⏱️ ${duration} 分钟]`;
-				}
-				return '';
-
-			default:
-				return this.formatTimeTracking(timeTracking, 'range');
-		}
-	}
-
-	/**
 	 * 从文本中移除时间追踪标记
 	 */
 	removeTimeTrackingTag(text: string): string {

@@ -72,13 +72,11 @@ export class TaskPanelView extends ItemView {
       this.registerEvent(
         this.app.vault.on('delete', (file: TAbstractFile) => {
           if (file instanceof TFile) {
-            console.log(`[TaskPanelView] File deleted: ${file.path}`);
             // 从任务列表中移除该文件的所有任务
             const oldCount = this.tasks.length;
             this.tasks = this.tasks.filter(t => t.file.path !== file.path);
             const removedCount = oldCount - this.tasks.length;
             if (removedCount > 0) {
-              console.log(`[TaskPanelView] Removed ${removedCount} tasks from deleted file`);
               this.updateView();
             }
           }
@@ -88,9 +86,7 @@ export class TaskPanelView extends ItemView {
       this.registerEvent(
         this.app.vault.on('rename', (file: TAbstractFile, oldPath: string) => {
           if (file instanceof TFile) {
-            console.log(`[TaskPanelView] File renamed: ${oldPath} -> ${file.path}`);
             // 更新该文件所有任务的 file 引用
-            let updatedCount = 0;
             this.tasks.forEach(task => {
               if (task.file.path === oldPath) {
                 // 注意：TFile 对象是不可变的，我们需要重新解析
@@ -130,9 +126,7 @@ export class TaskPanelView extends ItemView {
    */
   async loadTasks(): Promise<void> {
     try {
-      console.log('[TaskPanelView] Starting to load tasks...');
       const files = this.app.vault.getMarkdownFiles();
-      console.log(`[TaskPanelView] Found ${files.length} markdown files`);
       
       const allTasks: Task[] = [];
       let processedFiles = 0;
@@ -140,7 +134,6 @@ export class TaskPanelView extends ItemView {
       
       // ✅ 性能优化：过滤掉不需要处理的文件
       const validFiles = files.filter(file => !this.shouldSkipFile(file));
-      console.log(`[TaskPanelView] Processing ${validFiles.length} valid files (skipped ${files.length - validFiles.length})`);
 
       // ✅ 性能优化：批量并行处理（限制并发数避免内存溢出）
       const batchSize = 50; // 每批处理 50 个文件
@@ -166,15 +159,9 @@ export class TaskPanelView extends ItemView {
             failedFiles++;
           }
         }
-        
-        // 每批处理后更新一次进度（可选）
-        if (i > 0 && i % 200 === 0) {
-          console.log(`[TaskPanelView] Progress: ${i}/${validFiles.length} files processed`);
-        }
       }
 
       this.tasks = allTasks;
-      console.log(`[TaskPanelView] Loaded ${allTasks.length} tasks from ${processedFiles} files (${failedFiles} failed)`);
       this.updateView();
     } catch (error) {
       console.error('[TaskPanelView] Failed to load tasks:', error);
@@ -218,8 +205,6 @@ export class TaskPanelView extends ItemView {
       return;
     }
     
-    console.log(`[TaskPanelView] File modified: ${file.path}`);
-    
     // 清除之前的定时器
     if (this.refreshTimeout) {
       clearTimeout(this.refreshTimeout);
@@ -227,7 +212,6 @@ export class TaskPanelView extends ItemView {
 
     // 设置新的防抖定时器（1000ms，给用户更多编辑时间）
     this.refreshTimeout = setTimeout(async () => {
-      console.log(`[TaskPanelView] Refreshing tasks after file change...`);
       await this.refreshSingleFile(file);  // ✅ 优化：只刷新单个文件
       this.refreshTimeout = null;
     }, 1000);
@@ -238,20 +222,12 @@ export class TaskPanelView extends ItemView {
    */
   private async refreshSingleFile(changedFile: TFile): Promise<void> {
     try {
-      console.log(`[TaskPanelView] Refreshing single file: ${changedFile.path}`);
-      
       // 从当前任务列表中移除该文件的旧任务
-      const oldTaskCount = this.tasks.filter(t => t.file.path === changedFile.path).length;
       this.tasks = this.tasks.filter(t => t.file.path !== changedFile.path);
-      
-      console.log(`[TaskPanelView] Removed ${oldTaskCount} old tasks from ${changedFile.path}`);
       
       // 重新解析该文件
       const newTasks = await this.taskParser.parseFile(changedFile);
       this.tasks.push(...newTasks);
-      
-      console.log(`[TaskPanelView] Added ${newTasks.length} new tasks from ${changedFile.path}`);
-      console.log(`[TaskPanelView] Total tasks: ${this.tasks.length}`);
       
       // 更新视图
       this.updateView();
@@ -267,8 +243,6 @@ export class TaskPanelView extends ItemView {
    */
   async handleTaskToggle(task: Task): Promise<void> {
     try {
-      console.log('[TaskPanelView] Toggling task:', task.content, 'Status:', task.status);
-      
       // ⚠️ 关键：在切换前重新获取最新的任务引用
       // 因为文件可能被修改，旧的任务引用可能已失效
       const freshTask = await this.getFreshTask(task);
@@ -279,20 +253,14 @@ export class TaskPanelView extends ItemView {
         return;
       }
       
-      console.log('[TaskPanelView] Found fresh task, toggling status...');
-      
       // 调用 TimeTrackerService 切换状态
       await this.timeTrackerService.toggleTaskStatus(freshTask);
-      
-      console.log('[TaskPanelView] Status toggled successfully, refreshing...');
       
       // 等待一小段时间确保文件写入完成
       await new Promise(resolve => setTimeout(resolve, 100));
       
       // 刷新任务列表以显示最新状态
       await this.refreshTasks();
-      
-      console.log('[TaskPanelView] Tasks refreshed');
     } catch (error) {
       console.error('[TaskPanelView] Failed to toggle task:', error);
       new Notice('切换任务状态失败，请查看控制台');
@@ -321,7 +289,6 @@ export class TaskPanelView extends ItemView {
         return null;
       }
       
-      console.log('[TaskPanelView] Found fresh task at line', oldTask.line);
       return freshTask;
     } catch (error) {
       console.error('[TaskPanelView] Failed to get fresh task:', error);
@@ -361,7 +328,6 @@ export class TaskPanelView extends ItemView {
   handleFilterChange(filterType: string, value: any): void {
     // 筛选逻辑在 Svelte 组件内部处理
     // 这里可以添加额外的处理逻辑（如统计、日志等）
-    console.log(`[TaskPanelView] Filter changed: ${filterType} = ${value}`);
   }
 
   /**
@@ -389,8 +355,6 @@ export class TaskPanelView extends ItemView {
           timeTrackerService: this.timeTrackerService // ✅ 添加 timeTrackerService
         }
       });
-      
-      console.log('[TaskPanelView] View updated successfully');
     } catch (error) {
       console.error('[TaskPanelView] Failed to update view:', error);
     }

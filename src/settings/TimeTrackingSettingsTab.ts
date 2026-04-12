@@ -17,47 +17,39 @@ export class TimeTrackingSettingsTab extends PluginSettingTab {
 
 		containerEl.createEl('h2', { text: '时间追踪格式设置' });
 
-		// 模板语法说明
 		this.createTemplateHelp(containerEl);
 
-		// ✅ 进行中状态模板
+		// 进行中状态模板
 		const progressSetting = new Setting(containerEl)
 			.setName('进行中状态模板')
 			.setDesc('任务进入进行中状态时添加的时间标记格式');
 		
-		const progressInput = progressSetting.addText(text => text
+		progressSetting.addText(text => text
 			.setPlaceholder('[开始：{start}]')
 			.setValue(this.plugin.settings.timeTracking.progressTemplate)
 			.onChange(async (value) => {
-				// 实时验证
 				const validation = this.validateTemplateWithMixedFormatCheck(value, '进行中状态模板');
 				
 				if (!validation.valid) {
-					// 显示错误提示
 					progressErrorEl.setText(`❌ ${validation.error}`);
 					progressErrorEl.style.color = '#e74c3c';
 					progressErrorEl.style.marginTop = '8px';
 					return;
 				}
 				
-				// 验证通过，清除错误提示
 				progressErrorEl.setText('');
 				
-				// 更新设置
 				this.plugin.settings.timeTracking.progressTemplate = value;
 				await this.plugin.saveSettings();
 				
-				// 更新预览
 				progressPreviewEl.setText(
 					`预览: ${TimeTemplateRenderer.generatePreview(value, false)}`
 				);
 			})
 		);
 		
-		// 错误提示元素
 		const progressErrorEl = containerEl.createDiv({ cls: 'setting-error' });
 		
-		// 进行中状态预览
 		const progressPreviewEl = containerEl.createDiv({ 
 			cls: 'setting-item-description time-tracking-preview' 
 		});
@@ -68,44 +60,37 @@ export class TimeTrackingSettingsTab extends PluginSettingTab {
 			)}`
 		);
 
-		// ✅ 已完成状态模板
+		// 已完成状态模板
 		const completedSetting = new Setting(containerEl)
 			.setName('已完成状态模板')
 			.setDesc('任务完成时添加的时间标记格式');
 		
-		const completedInput = completedSetting.addText(text => text
+		completedSetting.addText(text => text
 			.setPlaceholder('[开始：{start} - 结束：{end}]')
 			.setValue(this.plugin.settings.timeTracking.completedTemplate)
 			.onChange(async (value) => {
-				// 实时验证
 				const validation = this.validateTemplateWithMixedFormatCheck(value, '已完成状态模板');
 				
 				if (!validation.valid) {
-					// 显示错误提示
 					completedErrorEl.setText(`❌ ${validation.error}`);
 					completedErrorEl.style.color = '#e74c3c';
 					completedErrorEl.style.marginTop = '8px';
 					return;
 				}
 				
-				// 验证通过，清除错误提示
 				completedErrorEl.setText('');
 				
-				// 更新设置
 				this.plugin.settings.timeTracking.completedTemplate = value;
 				await this.plugin.saveSettings();
 				
-				// 更新预览
 				completedPreviewEl.setText(
 					`预览: ${TimeTemplateRenderer.generatePreview(value, true)}`
 				);
 			})
 		);
 		
-		// 错误提示元素
 		const completedErrorEl = containerEl.createDiv({ cls: 'setting-error' });
 		
-		// 已完成状态预览
 		const completedPreviewEl = containerEl.createDiv({ 
 			cls: 'setting-item-description time-tracking-preview' 
 		});
@@ -126,27 +111,23 @@ export class TimeTrackingSettingsTab extends PluginSettingTab {
 					this.plugin.settings.timeTracking.progressTemplate = '[开始：{start}]';
 					this.plugin.settings.timeTracking.completedTemplate = '[开始：{start} - 结束：{end}]';
 					await this.plugin.saveSettings();
-					this.display(); // 重新渲染
+					this.display();
 				})
 			);
 	}
 
 	/**
 	 * 增强的模板验证：禁止混合格式
-	 * @param template 模板字符串
-	 * @param templateName 模板名称（用于错误提示）
 	 */
 	private validateTemplateWithMixedFormatCheck(
 		template: string,
 		templateName: string
 	): { valid: boolean; error?: string } {
-		// 基础验证
 		const baseValidation = TimeTemplateRenderer.validateTemplate(template);
 		if (!baseValidation.valid) {
 			return baseValidation;
 		}
 
-		// ✅ 检查是否混合格式
 		const hasFullDate = template.includes('{startDate}') || template.includes('{endDate}');
 		const hasTimeOnly = template.includes('{start}') || template.includes('{end}');
 
@@ -179,7 +160,7 @@ export class TimeTrackingSettingsTab extends PluginSettingTab {
 			row.createEl('td', { text: variable.example });
 		});
 
-		// ⚠️ 添加混合格式警告
+		// 混合格式警告
 		const warningDiv = helpDiv.createDiv({ cls: 'template-warning' });
 		warningDiv.style.color = '#e67e22';
 		warningDiv.style.marginTop = '12px';
@@ -192,7 +173,7 @@ export class TimeTrackingSettingsTab extends PluginSettingTab {
 			请选择其中一种格式使用。
 		`;
 
-		// 添加一些常用示例
+		// 常用示例
 		helpDiv.createEl('h3', { text: '常用示例' });
 		const examples = [
 			{ name: '简洁模式', progress: '[{start}]', completed: '[{start} - {end}]' },

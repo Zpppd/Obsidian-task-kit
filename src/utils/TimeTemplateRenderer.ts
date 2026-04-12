@@ -4,11 +4,6 @@ import { VALID_VARIABLE_NAMES } from '../types/settings';
 export class TimeTemplateRenderer {
   /**
    * 渲染时间模板
-   * @param template 模板字符串
-   * @param startTime 开始时间
-   * @param endTime 结束时间（可选）
-   * @param durationDate 预计算的耗时字符串（可选，如 "1小时30分钟"），支持跨天处理
-   * @returns 渲染后的字符串
    */
   static render(
     template: string,
@@ -20,7 +15,6 @@ export class TimeTemplateRenderer {
       return '';
     }
 
-    // 基础时间格式化
     const start = startTime.format('HH:mm');
     const startDate = startTime.format('YYYY-MM-DD HH:mm');
     
@@ -28,12 +22,10 @@ export class TimeTemplateRenderer {
       .replace(/\{start\}/g, start)
       .replace(/\{startDate\}/g, startDate);
 
-    // 如果有结束时间，替换相关变量
     if (endTime) {
       const end = endTime.format('HH:mm');
       const endDate = endTime.format('YYYY-MM-DD HH:mm');
       
-      // ✅ 优先使用外部传入的 durationDate，否则内部计算
       const finalDurationDate = durationDate || this.formatDurationDate(endTime.diff(startTime, 'minutes'));
       const durationMinutes = endTime.diff(startTime, 'minutes');
 
@@ -43,7 +35,6 @@ export class TimeTemplateRenderer {
         .replace(/\{duration\}/g, durationMinutes.toString())
         .replace(/\{durationDate\}/g, finalDurationDate);
     } else {
-      // 如果没有结束时间，移除相关变量占位符
       result = result
         .replace(/\{end\}/g, '')
         .replace(/\{endDate\}/g, '')

@@ -4,81 +4,58 @@ import type { TimeTrackingSettings } from '../types/settings';
 
 /**
  * 时间追踪解析器
- * ✅ 支持动态配置：根据用户自定义模板智能选择解析策略
+ * 采用特征提取策略：直接根据文本格式特征进行解析，不依赖模板配置
  */
 export class TimeTrackerParser {
 	private getSettings: () => TimeTrackingSettings;
 	
-	/**
-	 * @param getSettings - 一个返回最新设置的函数，支持动态更新
-	 */
 	constructor(getSettings: () => TimeTrackingSettings) {
 		this.getSettings = getSettings;
 	}
 
 	/**
 	 * 从文本中提取时间追踪信息
-	 * ✅ 简化策略：直接根据文本特征判断格式，不再依赖模板配置
 	 * @param text 任务文本
 	 * @param now 当前时间（用于计算日期）
 	 * @returns 时间追踪信息或 null
 	 */
 	parseTimeTracking(text: string, now: moment.Moment): TimeTracking | null {
-		console.log('[TimeTrackerParser] Parsing time tracking from:', text);
-		
-		// ✅ 先尝试完整日期格式（更精确）
+		// 优先匹配完整日期时间格式
 		const fullDateMatch = text.match(/(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})/g);
 		
 		if (fullDateMatch && fullDateMatch.length >= 2) {
-			// 完整日期时间范围
-			console.log('[TimeTrackerParser] Matched full date range:', fullDateMatch[0], 'to', fullDateMatch[1]);
 			return this.parseCompletedTime(fullDateMatch[0].trim(), fullDateMatch[1].trim(), now);
 		} else if (fullDateMatch && fullDateMatch.length === 1) {
-			// 单个完整日期时间（进行中）
-			console.log('[TimeTrackerParser] Matched single full datetime:', fullDateMatch[0]);
 			return this.parseProgressTimeFromFullDate(fullDateMatch[0].trim());
 		}
 		
-		// ✅ 降级到纯时间格式
+		// 降级到纯时间格式
 		const timeMatch = text.match(/(\d{1,2}:\d{2})/g);
 		
 		if (timeMatch && timeMatch.length >= 2) {
-			// 时间范围
 			const startTimeStr = timeMatch[0].trim();
 			const endTimeStr = timeMatch[1].trim();
 			
 			// 确保两个时间不相同（避免误匹配单个时间）
 			if (startTimeStr !== endTimeStr) {
-				console.log('[TimeTrackerParser] Matched time range:', startTimeStr, 'to', endTimeStr);
 				return this.parseCompletedTime(startTimeStr, endTimeStr, now);
-			} else {
-				console.log('[TimeTrackerParser] Skipped identical times, treating as single time');
 			}
 		} else if (timeMatch && timeMatch.length === 1) {
-			// 单个时间（进行中）
-			console.log('[TimeTrackerParser] Matched single time:', timeMatch[0]);
 			return this.parseProgressTime(timeMatch[0].trim(), now);
 		}
 		
-		console.log('[TimeTrackerParser] No time pattern matched');
 		return null;
 	}
 
 	/**
 	 * 解析已完成任务的时间
-	 * ✅ 支持两种格式：HH:mm 和 YYYY-MM-DD HH:mm
-	 * @param startTimeStr 开始时间字符串
-	 * @param endTimeStr 结束时间字符串
-	 * @param now 当前时间
+	 * 支持两种格式：HH:mm 和 YYYY-MM-DD HH:mm
 	 */
 	private parseCompletedTime(
 		startTimeStr: string,
 		endTimeStr: string,
 		now: moment.Moment
 	): TimeTracking {
-		console.log('[TimeTrackerParser] parseCompletedTime called with:', startTimeStr, endTimeStr);
-		
-		// ✅ 支持完整日期时间格式
 		let startTime: moment.Moment | null;
 		let endTime: moment.Moment | null;
 		
@@ -94,12 +71,8 @@ export class TimeTrackerParser {
 		} else {
 			endTime = this.parseTimeString(endTimeStr, now);
 		}
-		
-		console.log('[TimeTrackerParser] Parsed startTime:', startTime?.isValid() ? startTime.format('YYYY-MM-DD HH:mm') : 'invalid');
-		console.log('[TimeTrackerParser] Parsed endTime:', endTime?.isValid() ? endTime.format('YYYY-MM-DD HH:mm') : 'invalid');
 
 		if (!startTime || !startTime.isValid() || !endTime || !endTime.isValid()) {
-			console.error('[TimeTrackerParser] Failed to parse times:', startTimeStr, endTimeStr);
 			return {};
 		}
 
@@ -110,8 +83,6 @@ export class TimeTrackerParser {
 		}
 
 		const durationMinutes = adjustedEndTime.diff(startTime, 'minutes');
-		
-		console.log('[TimeTrackerParser] Duration:', durationMinutes, 'minutes');
 
 		return {
 			startTime,
@@ -122,7 +93,6 @@ export class TimeTrackerParser {
 
 	/**
 	 * 解析进行中任务的时间（从完整日期时间）
-	 * @param dateTimeStr 完整日期时间字符串 (YYYY-MM-DD HH:mm)
 	 */
 	private parseProgressTimeFromFullDate(dateTimeStr: string): TimeTracking {
 		const startTime = moment(dateTimeStr, 'YYYY-MM-DD HH:mm');
@@ -138,8 +108,6 @@ export class TimeTrackerParser {
 
 	/**
 	 * 解析进行中任务的时间
-	 * @param startTimeStr 开始时间字符串
-	 * @param now 当前时间
 	 */
 	private parseProgressTime(startTimeStr: string, now: moment.Moment): TimeTracking {
 		const startTime = this.parseTimeString(startTimeStr, now);
@@ -155,11 +123,8 @@ export class TimeTrackerParser {
 
 	/**
 	 * 解析时间字符串为 moment 对象
-	 * @param timeStr 时间字符串 (HH:mm)
-	 * @param now 当前时间（用于获取日期）
-	 * @deprecated 暂时保留，待功能测试完成后删除
+	 * @deprecated 待功能测试完成后删除
 	 */
-	// @deprecated
 	private parseTimeString(timeStr: string, now: moment.Moment): moment.Moment | null {
 		const timeRegex = /^(\d{1,2}):(\d{2})$/;
 		const match = timeStr.match(timeRegex);
@@ -180,8 +145,6 @@ export class TimeTrackerParser {
 
 	/**
 	 * 格式化时间追踪信息为显示文本
-	 * @param timeTracking 时间追踪信息
-	 * @param format 显示格式类型
 	 */
 	formatTimeTracking(timeTracking: TimeTracking, format: string = 'range'): string {
 		if (!timeTracking.startTime) {
@@ -190,7 +153,6 @@ export class TimeTrackerParser {
 
 		switch (format) {
 			case 'range':
-				// 起止时间格式：[14:30 - 15:45]
 				if (timeTracking.endTime) {
 					const start = timeTracking.startTime.format('HH:mm');
 					const end = timeTracking.endTime.format('HH:mm');
@@ -201,11 +163,9 @@ export class TimeTrackerParser {
 				}
 
 			case 'duration':
-				// 总耗时格式：[⏱️ 75 分钟]
 				if (timeTracking.durationMinutes !== undefined) {
 					return `[⏱️ ${timeTracking.durationMinutes} 分钟]`;
 				} else if (timeTracking.startTime) {
-					// 计算从开始到现在的时长
 					const now = moment();
 					const duration = now.diff(timeTracking.startTime, 'minutes');
 					return `[⏱️ ${duration} 分钟]`;
@@ -219,11 +179,8 @@ export class TimeTrackerParser {
 
 	/**
 	 * 从文本中移除时间追踪标记
-	 * @param text 原始文本
-	 * @returns 清理后的文本
 	 */
 	removeTimeTrackingTag(text: string): string {
-		// 移除 [开始：HH:mm] 或 [HH:mm - HH:mm] 格式
 		return text.replace(/\s*\[[^[\]]*(?:开始[：:]|-\s*\d)[^[\]]*\]/g, '').trim();
 	}
 }

@@ -1,22 +1,31 @@
-import { Plugin, MarkdownView } from 'obsidian';
+import { Plugin, MarkdownView, Notice } from 'obsidian';
 import moment from 'moment';
 import { TaskParser } from './parser/TaskParser';
 import { TimeTrackerService } from './services/TimeTrackerService';
 import { TaskPanelView, TASK_PANEL_VIEW_TYPE } from './views/TaskPanelView';
 import type { Task } from './types/task';
+import { DEFAULT_SETTINGS, type PluginSettings } from './types/settings';
+import { TimeTemplateRenderer } from './utils/TimeTemplateRenderer';
+import { TimeTrackingSettingsTab } from './settings/TimeTrackingSettingsTab';
 
 export default class TaskMasterProPlugin extends Plugin {
 	private taskParser!: TaskParser;
 	private timeTrackerService!: TimeTrackerService;
+	
+	// ✅ 插件设置
+	settings: PluginSettings = DEFAULT_SETTINGS;
 
 	async onload() {
 		console.log('Task Master Pro loaded!');
 		
-		// 初始化任务解析器
-		this.taskParser = new TaskParser(this.app);
+		// ✅ 加载设置
+		await this.loadSettings();
 		
-		// 初始化时间追踪服务
-		this.timeTrackerService = new TimeTrackerService(this.app, this.taskParser);
+		// ✅ 初始化任务解析器（传入 getter 函数，支持动态更新）
+		this.taskParser = new TaskParser(this.app, () => this.settings);
+		
+		// 初始化时间追踪服务（传入插件实例以访问设置）
+		this.timeTrackerService = new TimeTrackerService(this.app, this.taskParser, this);
 		
 		// ✅ 使用 DOM 事件监听方案拦截编辑器中的 checkbox 点击
 		this.registerEditorCheckboxInterceptor();
@@ -24,8 +33,11 @@ export default class TaskMasterProPlugin extends Plugin {
 		// 注册任务面板视图
 		this.registerView(
 			TASK_PANEL_VIEW_TYPE,
-			(leaf) => new TaskPanelView(leaf, this.taskParser, this.timeTrackerService)
+			(leaf) => new TaskPanelView(leaf, this.taskParser, this.timeTrackerService, this)
 		);
+		
+		// ✅ 注册设置 Tab
+		this.addSettingTab(new TimeTrackingSettingsTab(this.app, this));
 		
 		// 注册打开任务面板命令
 		this.addCommand({
@@ -72,6 +84,22 @@ export default class TaskMasterProPlugin extends Plugin {
 		console.log('Task Master Pro unloaded!');
 		// 清理工作由 Obsidian 自动处理
 	}
+	
+	/**
+	 * 加载设置
+	 */
+	async loadSettings() {
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+		console.log('[Settings] Loaded:', this.settings);
+	}
+	
+	/**
+	 * 保存设置
+	 */
+	async saveSettings() {
+		await this.saveData(this.settings);
+		console.log('[Settings] Saved:', this.settings);
+	}
 
 	/**
 	 * 注册编辑器 Checkbox 拦截器（基于 DOM 事件监听）
@@ -81,7 +109,8 @@ export default class TaskMasterProPlugin extends Plugin {
 	 * 2. 在该视图的 contentEl 上添加 click 事件监听
 	 * 3. 拦截 checkbox 点击，阻止默认行为
 	 * 4. 通过 editor.cm 访问底层 CodeMirror 实例，使用 posAtDOM 和 Transaction API
-	 * 5. 让 Obsidian 自动同步文件（不调用 vault.modify）
+	 * 5. ✅ 使用模板渲染引擎生成时间标记
+	 * 6. 让 Obsidian 自动同步文件（不调用 vault.modify）
 	 */
 	private registerEditorCheckboxInterceptor() {
 		// ✅ 使用 Map 存储每个视图的清理函数，避免重复注册
@@ -108,7 +137,7 @@ export default class TaskMasterProPlugin extends Plugin {
 					const target = event.target as HTMLElement;
 					
 					// 检查是否点击了 checkbox
-					if (target.tagName !== 'INPUT' || target.type !== 'checkbox') {
+					if (target.tagName !== 'INPUT' || (target as HTMLInputElement).type !== 'checkbox') {
 						return;
 					}
 					
@@ -140,62 +169,38 @@ export default class TaskMasterProPlugin extends Plugin {
 						const pos = cmView.posAtDOM(target);
 						const line = cmView.state.doc.lineAt(pos);
 						const lineText = line.text;
+						const lineNumber = line.number - 1; // 转换为 0-based
 						
-						console.log('[CheckboxInterceptor] Line:', line.number - 1, 'Text:', lineText);
+						console.log('[CheckboxInterceptor] Line:', lineNumber, 'Text:', lineText);
 						
-						// 解析任务行
-						const match = lineText.match(/^(\s*-\s*\[)(.)(\]\s*)(.*)$/);
-						if (!match) {
-							console.warn('[CheckboxInterceptor] Not a valid task line');
+						// ✅ 获取当前活动文件
+						const activeFile = this.app.workspace.getActiveFile();
+						if (!activeFile) {
+							console.error('[CheckboxInterceptor] No active file');
 							return;
 						}
 						
-						const indent = match[1];
-						const statusChar = match[2];
-						const rest = match[3];
-						let content = match[4];
+						// ✅ 解析当前文件的所有任务
+						const tasks = await this.taskParser.parseFile(activeFile);
 						
-						console.log('[CheckboxInterceptor] Current status:', statusChar);
+						// ✅ 找到对应的任务（通过行号匹配）
+						const task = tasks.find(t => t.line === lineNumber);
 						
-						const now = moment();
-						const timeStr = now.format('HH:mm');
-						let newLineText = '';
-						
-						// ✅ 状态流转逻辑（与 time-tracker-plugin 一致）
-						if (statusChar === ' ') {
-							// Pending → Progress
-							newLineText = `${indent}/${rest}${content} [开始：${timeStr}]`;
-							console.log('[CheckboxInterceptor] New line (Progress):', newLineText);
-						} else if (statusChar === '/') {
-							// Progress → Completed
-							const startMatch = content.match(/ \[开始：(\d{2}:\d{2})\]$/);
-							const startStr = startMatch ? startMatch[1] : timeStr;
-							const cleanContent = startMatch 
-								? content.replace(/ \[开始：\d{2}:\d{2}\]$/, '') 
-								: content;
-							
-							newLineText = `${indent}x${rest}${cleanContent}[开始：${startStr} - 结束：${timeStr}]`;
-							console.log('[CheckboxInterceptor] New line (Completed):', newLineText);
-						} else {
-							// Completed → Pending
-							const cleanContent = content.replace(/ \[(开始|结束|耗时).*?\]$/, '').trim();
-							newLineText = `${indent} ${rest}${cleanContent}`;
-							console.log('[CheckboxInterceptor] New line (Pending):', newLineText);
+						if (!task) {
+							console.warn('[CheckboxInterceptor] Task not found at line', lineNumber);
+							return;
 						}
 						
-						if (newLineText) {
-							// ✅ 关键：使用 CodeMirror 6 Transaction API
-							const transaction = cmView.state.update({
-								changes: { 
-									from: line.from, 
-									to: line.to, 
-									insert: newLineText 
-								}
-							});
-							cmView.dispatch(transaction);
-							
-							console.log('[CheckboxInterceptor] Transaction dispatched successfully');
-						}
+						console.log('[CheckboxInterceptor] Found task:', task.content, 'Status:', task.status);
+						
+						// ✅ 调用 TimeTrackerService 统一处理状态流转
+						await this.timeTrackerService.toggleTaskStatus(task);
+						
+						console.log('[CheckboxInterceptor] Status toggled successfully');
+						
+						// ✅ 注意：不需要手动更新编辑器内容
+						// TimeTrackerService.updateTaskLine() 已经通过 vault.modify 更新了文件
+						// Obsidian 会自动同步到编辑器视图
 						
 					} catch (error) {
 						console.error('[CheckboxInterceptor] Failed to handle checkbox click:', error);

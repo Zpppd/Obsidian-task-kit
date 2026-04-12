@@ -18,6 +18,7 @@ export interface TimeTracking {
 	endTime?: moment.Moment;
 	durationMinutes?: number;
 	displayFormat?: string;
+	usedTemplate?: string; // ✅ 记录使用的模板字符串，用于反向提取时间
 }
 
 /**

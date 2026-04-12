@@ -1,0 +1,104 @@
+/*
+
+Task Master Pro 插件全局样式
+
+*/
+
+/* ========================================
+   任务列表 Checkbox 基础样式
+   ======================================== */
+
+/* 确保任务列表项有良好的点击区域 */
+.task-list-item {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.task-list-item:hover {
+  background-color: var(--background-modifier-hover);
+}
+
+/* ========================================
+   时间追踪设置界面样式
+   ======================================== */
+
+/* 帮助文档容器 */
+.time-tracking-help {
+  margin: 20px 0;
+  padding: 15px;
+  background-color: var(--background-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--background-modifier-border);
+}
+
+.time-tracking-help h3 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  color: var(--text-normal);
+  font-size: 1.1em;
+}
+
+/* 变量表格样式 */
+.time-tracking-help table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  font-size: 0.9em;
+}
+
+.time-tracking-help th,
+.time-tracking-help td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.time-tracking-help th {
+  background-color: var(--background-modifier-hover);
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.time-tracking-help td {
+  color: var(--text-muted);
+}
+
+/* 示例列表样式 */
+.time-tracking-help ul {
+  padding-left: 20px;
+  margin: 12px 0;
+}
+
+.time-tracking-help li {
+  margin: 10px 0;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.time-tracking-help li strong {
+  color: var(--text-normal);
+}
+
+/* 预览文本样式 */
+.time-tracking-preview {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background-color: var(--background-primary-alt);
+  border-radius: 4px;
+  border-left: 3px solid var(--interactive-accent);
+  font-family: 'Courier New', monospace;
+  font-size: 0.9em;
+  color: var(--text-normal);
+}
+
+/* 错误提示样式 */
+.setting-error {
+  margin-top: 8px;
+  padding: 6px 10px;
+  background-color: rgba(231, 76, 60, 0.1);
+  border-radius: 4px;
+  border-left: 3px solid #e74c3c;
+  font-size: 0.85em;
+  color: #e74c3c;
+  min-height: 20px;
+}

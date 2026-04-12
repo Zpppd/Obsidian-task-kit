@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Task } from '../../types/task';
+  import type { TimeTrackerService } from '../../services/TimeTrackerService';
   import TaskItem from './TaskItem.svelte';
   import FilterBar from './FilterBar.svelte';
 
@@ -7,6 +8,7 @@
   export let onToggle: (task: Task) => void;
   export let onClick: (task: Task) => void;
   export let onFilterChange: (filterType: string, value: any) => void;
+  export let timeTrackerService: TimeTrackerService; // ✅ 添加 TimeTrackerService prop
 
   // 筛选状态
   let searchText = '';
@@ -102,6 +104,7 @@
                 {task}
                 {onToggle}
                 {onClick}
+                {timeTrackerService}
               />
             {/each}
           </div>

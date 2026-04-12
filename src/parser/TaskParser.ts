@@ -2,6 +2,7 @@ import { App, TFile } from 'obsidian';
 import moment from 'moment';
 import type { Task, ParseResult } from '../types/task';
 import { TaskStatus } from '../types/task';
+import type { PluginSettings } from '../types/settings';
 import { ReminderParser } from './ReminderParser';
 import { TimeTrackerParser } from './TimeTrackerParser';
 
@@ -13,11 +14,17 @@ export class TaskParser {
 	private app: App;
 	private reminderParser: ReminderParser;
 	private timeTrackerParser: TimeTrackerParser;
+	private getSettings: () => PluginSettings;
 
-	constructor(app: App) {
+	/**
+	 * @param app - Obsidian App 实例
+	 * @param getSettings - 一个返回最新设置的函数，支持动态更新
+	 */
+	constructor(app: App, getSettings: () => PluginSettings) {
 		this.app = app;
+		this.getSettings = getSettings;
 		this.reminderParser = new ReminderParser();
-		this.timeTrackerParser = new TimeTrackerParser();
+		this.timeTrackerParser = new TimeTrackerParser(() => getSettings().timeTracking);
 	}
 
 	/**

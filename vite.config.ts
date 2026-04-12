@@ -8,12 +8,18 @@ export default defineConfig({
   plugins: [
     svelte(),
     {
-      name: 'copy-manifest',
+      name: 'copy-assets',
       closeBundle() {
         // 复制 manifest.json 到 dist 目录
         if (fs.existsSync('manifest.json')) {
           fs.copyFileSync('manifest.json', 'dist/manifest.json')
           console.log('✓ Copied manifest.json to dist/')
+        }
+        
+        // ✅ 复制 styles.css 到 dist 目录（Obsidian 会自动加载）
+        if (fs.existsSync('styles.css')) {
+          fs.copyFileSync('styles.css', 'dist/styles.css')
+          console.log('✓ Copied styles.css to dist/')
         }
       }
     }

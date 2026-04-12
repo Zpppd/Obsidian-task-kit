@@ -1,13 +1,11 @@
 <script lang="ts">
   import type { Task } from '../../types/task';
-  import { TimeTrackerParser } from '../../parser/TimeTrackerParser';
+  import type { TimeTrackerService } from '../../services/TimeTrackerService';
   
   export let task: Task;
   export let onToggle: (task: Task) => void;
   export let onClick: (task: Task) => void;
-
-  // 创建 TimeTrackerParser 实例用于格式化时间
-  const timeTrackerParser = new TimeTrackerParser();
+  export let timeTrackerService: TimeTrackerService; // ✅ 添加 TimeTrackerService prop
 
   // ✅ 根据任务状态返回 checkbox 的 CSS 类
   function getCheckboxClass(): string {
@@ -51,12 +49,13 @@
     }
   }
 
-  // ✅ 格式化时间追踪信息
+  // ✅ 格式化时间追踪信息（使用 TimeTrackerService）
   function formatTimeTracking(): string {
     if (!task.timeTracking) {
       return '';
     }
-    return timeTrackerParser.formatTimeTracking(task.timeTracking, 'range');
+    // ✅ 使用 TimeTrackerService 的 formatDisplayText 方法，支持自定义模板
+    return timeTrackerService.formatDisplayText(task, 'range');
   }
 
   // ✅ 格式化提醒时间

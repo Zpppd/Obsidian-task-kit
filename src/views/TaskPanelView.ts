@@ -4,20 +4,23 @@ import type { Task } from '../types/task';
 import { TaskParser } from '../parser/TaskParser';
 import { TimeTrackerService } from '../services/TimeTrackerService';
 import { TaskList } from './components';
+import type TaskMasterProPlugin from '../main';
 
 export const TASK_PANEL_VIEW_TYPE = 'task-master-pro-panel';
 
 export class TaskPanelView extends ItemView {
   private taskParser: TaskParser;
   private timeTrackerService: TimeTrackerService;
+  private plugin: TaskMasterProPlugin; // ✅ 添加插件实例引用
   private tasks: Task[] = [];
   private svelteComponent: any = null;
   private refreshTimeout: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(leaf: WorkspaceLeaf, taskParser: TaskParser, timeTrackerService: TimeTrackerService) {
+  constructor(leaf: WorkspaceLeaf, taskParser: TaskParser, timeTrackerService: TimeTrackerService, plugin: TaskMasterProPlugin) {
     super(leaf);
     this.taskParser = taskParser;
     this.timeTrackerService = timeTrackerService;
+    this.plugin = plugin;
   }
 
   getViewType(): string {
@@ -52,7 +55,8 @@ export class TaskPanelView extends ItemView {
           tasks: this.tasks,
           onToggle: this.handleTaskToggle.bind(this),
           onClick: this.handleTaskClick.bind(this),
-          onFilterChange: this.handleFilterChange.bind(this)
+          onFilterChange: this.handleFilterChange.bind(this),
+          timeTrackerService: this.timeTrackerService // ✅ 传递 TimeTrackerService
         }
       });
 
@@ -381,7 +385,8 @@ export class TaskPanelView extends ItemView {
           tasks: this.tasks,
           onToggle: this.handleTaskToggle.bind(this),
           onClick: this.handleTaskClick.bind(this),
-          onFilterChange: this.handleFilterChange.bind(this)
+          onFilterChange: this.handleFilterChange.bind(this),
+          timeTrackerService: this.timeTrackerService // ✅ 添加 timeTrackerService
         }
       });
       

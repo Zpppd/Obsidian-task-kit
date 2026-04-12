@@ -3,6 +3,8 @@ import moment from 'moment';
 import type { Task } from '../types/task';
 import { TaskStatus } from '../types/task';
 import { TaskParser } from '../parser/TaskParser';
+import { TimeTemplateRenderer } from '../utils/TimeTemplateRenderer';
+import type TaskMasterProPlugin from '../main';
 
 /**
  * 时间追踪服务
@@ -11,10 +13,12 @@ import { TaskParser } from '../parser/TaskParser';
 export class TimeTrackerService {
 	private app: App;
 	private taskParser: TaskParser;
+	private plugin: TaskMasterProPlugin; // ✅ 添加插件实例引用
 
-	constructor(app: App, taskParser: TaskParser) {
+	constructor(app: App, taskParser: TaskParser, plugin: TaskMasterProPlugin) {
 		this.app = app;
 		this.taskParser = taskParser;
+		this.plugin = plugin;
 	}
 
 	/**
@@ -45,7 +49,7 @@ export class TimeTrackerService {
 
 	/**
 	 * Pending → Progress（开始任务）
-	 * 添加 [开始：HH:mm] 标记
+	 * ✅ 使用模板渲染引擎生成时间标记，并记录使用的模板
 	 * @param task 任务对象
 	 */
 	private async startTask(task: Task): Promise<void> {
@@ -57,15 +61,22 @@ export class TimeTrackerService {
 		// 更新任务状态
 		task.status = TaskStatus.Progress;
 		
+		// ✅ 获取当前设置的进行中模板
+		const progressTemplate = this.plugin.settings.timeTracking.progressTemplate;
+		
 		// 初始化时间追踪信息
 		task.timeTracking = {
 			startTime: now.clone(),
 			endTime: undefined,
-			durationMinutes: undefined
+			durationMinutes: undefined,
+			usedTemplate: progressTemplate // ✅ 记录使用的模板
 		};
 		
-		// 重建任务行并更新文件
-		const newLine = this.taskParser.buildTaskLine(task);
+		// ✅ 使用模板渲染引擎生成时间标记
+		const timeMarker = TimeTemplateRenderer.render(progressTemplate, now);
+		
+		// 构建新的任务行
+		const newLine = this.buildTaskLineWithTimeMarker(task, timeMarker);
 		console.log(`[TimeTrackerService] New line content: ${newLine}`);
 		console.log(`[TimeTrackerService] Updating file: ${task.file.path}, line: ${task.line}`);
 		
@@ -76,7 +87,7 @@ export class TimeTrackerService {
 
 	/**
 	 * Progress → Completed（完成任务）
-	 * 计算耗时，替换为 [开始时间 - 结束时间] 格式
+	 * ✅ 使用存储的模板信息，无需正则提取
 	 * @param task 任务对象
 	 */
 	private async completeTask(task: Task): Promise<void> {
@@ -89,11 +100,11 @@ export class TimeTrackerService {
 			return;
 		}
 		
+		// ✅ 直接使用存储的开始时间，不需要从文本中提取！
+		const startTime = task.timeTracking.startTime;
+		
 		// 计算耗时
-		const durationMinutes = this.calculateDuration(
-			task.timeTracking.startTime,
-			now
-		);
+		const durationMinutes = this.calculateDuration(startTime, now);
 		
 		// 更新任务状态
 		task.status = TaskStatus.Completed;
@@ -102,8 +113,15 @@ export class TimeTrackerService {
 		task.timeTracking.endTime = now.clone();
 		task.timeTracking.durationMinutes = durationMinutes;
 		
-		// 重建任务行并更新文件
-		const newLine = this.taskParser.buildTaskLine(task);
+		// ✅ 使用模板渲染引擎生成时间标记
+		const timeMarker = TimeTemplateRenderer.render(
+			this.plugin.settings.timeTracking.completedTemplate,
+			startTime,
+			now
+		);
+		
+		// 构建新的任务行
+		const newLine = this.buildTaskLineWithTimeMarker(task, timeMarker);
 		console.log(`[TimeTrackerService] New line content: ${newLine}`);
 		
 		await this.taskParser.updateTaskLine(task, newLine);
@@ -128,6 +146,26 @@ export class TimeTrackerService {
 		await this.taskParser.updateTaskLine(task, newLine);
 		
 		console.log(`✅ Task reset: ${task.content}, time tracking cleared`);
+	}
+
+	/**
+	 * 构建带有时间标记的任务行
+	 * ✅ 保留任务的缩进信息
+	 * @param task 任务对象
+	 * @param timeMarker 时间标记字符串
+	 * @returns 完整的任务行文本
+	 */
+	private buildTaskLineWithTimeMarker(task: Task, timeMarker: string): string {
+		// ✅ 使用任务的 indentation 属性，如果没有则使用默认值
+		const prefix = task.indentation || '-';
+		const checkboxMap = {
+			[TaskStatus.Pending]: '[ ]',
+			[TaskStatus.Progress]: '[/]',
+			[TaskStatus.Completed]: '[x]'
+		};
+		
+		const checkbox = checkboxMap[task.status];
+		return `${prefix} ${checkbox} ${task.content}${timeMarker ? ' ' + timeMarker : ''}`;
 	}
 
 	/**
@@ -158,26 +196,52 @@ export class TimeTrackerService {
 	}
 
 	/**
-	 * 格式化显示文本（根据配置）
+	 * 格式化时间追踪信息为显示文本
+	 * ✅ 添加详细日志以便调试
 	 * @param task 任务对象
 	 * @param format 显示格式：'range' | 'duration' | 'ai'
 	 * @returns 格式化后的文本
 	 */
 	formatDisplayText(task: Task, format: string = 'range'): string {
+		console.log('[TimeTrackerService] formatDisplayText called for:', task.content);
+		console.log('[TimeTrackerService] task.timeTracking:', task.timeTracking);
+		
 		if (!task.timeTracking || !task.timeTracking.startTime) {
+			console.warn('[TimeTrackerService] No timeTracking or startTime, returning empty string');
 			return '';
 		}
 
 		switch (format) {
 			case 'range':
-				// 起止时间格式：[14:30 - 15:45]
+				// ✅ 使用模板渲染引擎
 				if (task.timeTracking.endTime) {
-					const start = task.timeTracking.startTime.format('HH:mm');
-					const end = task.timeTracking.endTime.format('HH:mm');
-					return `[${start} - ${end}]`;
+					// 已完成状态
+					console.log('[TimeTrackerService] Rendering completed template');
+					console.log('[TimeTrackerService] Template:', this.plugin.settings.timeTracking.completedTemplate);
+					console.log('[TimeTrackerService] startTime:', task.timeTracking.startTime.format('YYYY-MM-DD HH:mm'));
+					console.log('[TimeTrackerService] endTime:', task.timeTracking.endTime.format('YYYY-MM-DD HH:mm'));
+					
+					const result = TimeTemplateRenderer.render(
+						this.plugin.settings.timeTracking.completedTemplate,
+						task.timeTracking.startTime,
+						task.timeTracking.endTime
+					);
+					
+					console.log('[TimeTrackerService] Rendered result:', result);
+					return result;
 				} else {
-					const start = task.timeTracking.startTime.format('HH:mm');
-					return `[开始：${start}]`;
+					// 进行中状态
+					console.log('[TimeTrackerService] Rendering progress template');
+					console.log('[TimeTrackerService] Template:', this.plugin.settings.timeTracking.progressTemplate);
+					console.log('[TimeTrackerService] startTime:', task.timeTracking.startTime.format('YYYY-MM-DD HH:mm'));
+					
+					const result = TimeTemplateRenderer.render(
+						this.plugin.settings.timeTracking.progressTemplate,
+						task.timeTracking.startTime
+					);
+					
+					console.log('[TimeTrackerService] Rendered result:', result);
+					return result;
 				}
 
 			case 'duration':

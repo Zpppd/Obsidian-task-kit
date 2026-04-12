@@ -30,7 +30,7 @@ export class TimeTrackingSettingsTab extends PluginSettingTab {
 			.setValue(this.plugin.settings.timeTracking.progressTemplate)
 			.onChange(async (value) => {
 				// 实时验证
-				const validation = TimeTemplateRenderer.validateTemplate(value);
+				const validation = this.validateTemplateWithMixedFormatCheck(value, '进行中状态模板');
 				
 				if (!validation.valid) {
 					// 显示错误提示
@@ -78,7 +78,7 @@ export class TimeTrackingSettingsTab extends PluginSettingTab {
 			.setValue(this.plugin.settings.timeTracking.completedTemplate)
 			.onChange(async (value) => {
 				// 实时验证
-				const validation = TimeTemplateRenderer.validateTemplate(value);
+				const validation = this.validateTemplateWithMixedFormatCheck(value, '已完成状态模板');
 				
 				if (!validation.valid) {
 					// 显示错误提示
@@ -131,6 +131,35 @@ export class TimeTrackingSettingsTab extends PluginSettingTab {
 			);
 	}
 
+	/**
+	 * 增强的模板验证：禁止混合格式
+	 * @param template 模板字符串
+	 * @param templateName 模板名称（用于错误提示）
+	 */
+	private validateTemplateWithMixedFormatCheck(
+		template: string,
+		templateName: string
+	): { valid: boolean; error?: string } {
+		// 基础验证
+		const baseValidation = TimeTemplateRenderer.validateTemplate(template);
+		if (!baseValidation.valid) {
+			return baseValidation;
+		}
+
+		// ✅ 检查是否混合格式
+		const hasFullDate = template.includes('{startDate}') || template.includes('{endDate}');
+		const hasTimeOnly = template.includes('{start}') || template.includes('{end}');
+
+		if (hasFullDate && hasTimeOnly) {
+			return {
+				valid: false,
+				error: `${templateName} 不允许混合格式：不能同时使用 {startDate}/{endDate} 和 {start}/{end}`
+			};
+		}
+
+		return { valid: true };
+	}
+
 	private createTemplateHelp(containerEl: HTMLElement): void {
 		const helpDiv = containerEl.createDiv({ cls: 'time-tracking-help' });
 		helpDiv.createEl('h3', { text: '可用变量' });
@@ -149,6 +178,19 @@ export class TimeTrackingSettingsTab extends PluginSettingTab {
 			row.createEl('td', { text: variable.description });
 			row.createEl('td', { text: variable.example });
 		});
+
+		// ⚠️ 添加混合格式警告
+		const warningDiv = helpDiv.createDiv({ cls: 'template-warning' });
+		warningDiv.style.color = '#e67e22';
+		warningDiv.style.marginTop = '12px';
+		warningDiv.style.padding = '8px';
+		warningDiv.style.backgroundColor = '#fef5e7';
+		warningDiv.style.borderRadius = '4px';
+		warningDiv.innerHTML = `
+			<strong>⚠️ 重要提示：</strong><br>
+			不允许混合格式：模板中不能同时使用 <code>{startDate}/{endDate}</code> 和 <code>{start}/{end}</code><br>
+			请选择其中一种格式使用。
+		`;
 
 		// 添加一些常用示例
 		helpDiv.createEl('h3', { text: '常用示例' });

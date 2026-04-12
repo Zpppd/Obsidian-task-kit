@@ -18,7 +18,7 @@ export class TimeTrackerParser {
 
 	/**
 	 * 从文本中提取时间追踪信息
-	 * ✅ 根据用户配置的模板智能选择解析策略
+	 * ✅ 简化策略：直接根据文本特征判断格式，不再依赖模板配置
 	 * @param text 任务文本
 	 * @param now 当前时间（用于计算日期）
 	 * @returns 时间追踪信息或 null
@@ -26,95 +26,41 @@ export class TimeTrackerParser {
 	parseTimeTracking(text: string, now: moment.Moment): TimeTracking | null {
 		console.log('[TimeTrackerParser] Parsing time tracking from:', text);
 		
-		// ✅ 动态获取最新设置
-		const settings = this.getSettings();
-		const completedTemplate = settings.completedTemplate;
+		// ✅ 先尝试完整日期格式（更精确）
+		const fullDateMatch = text.match(/(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})/g);
 		
-		// 检查模板是否使用完整日期格式
-		const usesFullDate = completedTemplate.includes('{startDate}') || 
-		                    completedTemplate.includes('{endDate}');
+		if (fullDateMatch && fullDateMatch.length >= 2) {
+			// 完整日期时间范围
+			console.log('[TimeTrackerParser] Matched full date range:', fullDateMatch[0], 'to', fullDateMatch[1]);
+			return this.parseCompletedTime(fullDateMatch[0].trim(), fullDateMatch[1].trim(), now);
+		} else if (fullDateMatch && fullDateMatch.length === 1) {
+			// 单个完整日期时间（进行中）
+			console.log('[TimeTrackerParser] Matched single full datetime:', fullDateMatch[0]);
+			return this.parseProgressTimeFromFullDate(fullDateMatch[0].trim());
+		}
 		
-		console.log('[TimeTrackerParser] Template uses full date:', usesFullDate, 'Template:', completedTemplate);
+		// ✅ 降级到纯时间格式
+		const timeMatch = text.match(/(\d{1,2}:\d{2})/g);
 		
-		if (usesFullDate) {
-			// 策略 1: 优先匹配完整日期时间格式
-			return this.parseWithFullDatePriority(text, now);
-		} else {
-			// 策略 2: 仅匹配 HH:mm 格式
-			return this.parseWithTimeOnlyPriority(text, now);
-		}
-	}
-
-	/**
-	 * 策略 1: 优先匹配完整日期时间格式
-	 */
-	private parseWithFullDatePriority(text: string, now: moment.Moment): TimeTracking | null {
-		// 1. 尝试匹配完整日期时间范围：YYYY-MM-DD HH:mm ... YYYY-MM-DD HH:mm
-		const fullDateRangeMatch = text.match(/(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}).*?(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})/);
-		if (fullDateRangeMatch) {
-			console.log('[TimeTrackerParser] Matched full date range:', fullDateRangeMatch[1], 'to', fullDateRangeMatch[2]);
-			return this.parseCompletedTime(fullDateRangeMatch[1].trim(), fullDateRangeMatch[2].trim(), now);
-		}
-
-		// 2. 尝试匹配单个完整日期时间：YYYY-MM-DD HH:mm
-		const fullDateTimeMatch = text.match(/(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})/);
-		if (fullDateTimeMatch) {
-			console.log('[TimeTrackerParser] Matched full datetime:', fullDateTimeMatch[1]);
-			return this.parseProgressTimeFromFullDate(fullDateTimeMatch[1].trim());
-		}
-
-		// 3. 降级尝试匹配时间范围 HH:mm ... HH:mm
-		const timeRangeMatch = text.match(/(\d{1,2}:\d{2}).*?(\d{1,2}:\d{2})/);
-		if (timeRangeMatch && timeRangeMatch[1].trim() !== timeRangeMatch[2].trim()) {
-			console.log('[TimeTrackerParser] Fallback matched time range:', timeRangeMatch[1], 'to', timeRangeMatch[2]);
-			return this.parseCompletedTime(timeRangeMatch[1].trim(), timeRangeMatch[2].trim(), now);
-		}
-
-		// 4. 降级尝试匹配单个时间 HH:mm
-		const timeMatch = text.match(/(\d{1,2}:\d{2})/);
-		if (timeMatch) {
-			console.log('[TimeTrackerParser] Fallback matched single time:', timeMatch[1]);
-			return this.parseProgressTime(timeMatch[1].trim(), now);
-		}
-
-		console.log('[TimeTrackerParser] No time pattern matched (Full Date Priority)');
-		return null;
-	}
-
-	/**
-	 * 策略 2: 仅匹配 HH:mm 格式 (或者当模板不包含完整日期时)
-	 */
-	private parseWithTimeOnlyPriority(text: string, now: moment.Moment): TimeTracking | null {
-		// 1. 尝试匹配时间范围：HH:mm ... HH:mm
-		const timeRangeMatch = text.match(/(\d{1,2}:\d{2}).*?(\d{1,2}:\d{2})/);
-		if (timeRangeMatch) {
-			const startTimeStr = timeRangeMatch[1].trim();
-			const endTimeStr = timeRangeMatch[2].trim();
-			console.log('[TimeTrackerParser] Matched time range:', startTimeStr, 'to', endTimeStr);
+		if (timeMatch && timeMatch.length >= 2) {
+			// 时间范围
+			const startTimeStr = timeMatch[0].trim();
+			const endTimeStr = timeMatch[1].trim();
 			
 			// 确保两个时间不相同（避免误匹配单个时间）
 			if (startTimeStr !== endTimeStr) {
+				console.log('[TimeTrackerParser] Matched time range:', startTimeStr, 'to', endTimeStr);
 				return this.parseCompletedTime(startTimeStr, endTimeStr, now);
 			} else {
 				console.log('[TimeTrackerParser] Skipped identical times, treating as single time');
 			}
+		} else if (timeMatch && timeMatch.length === 1) {
+			// 单个时间（进行中）
+			console.log('[TimeTrackerParser] Matched single time:', timeMatch[0]);
+			return this.parseProgressTime(timeMatch[0].trim(), now);
 		}
 		
-		// 2. 尝试匹配单个时间：HH:mm
-		const timeMatch = text.match(/(\d{1,2}:\d{2})/);
-		if (timeMatch) {
-			console.log('[TimeTrackerParser] Matched single time:', timeMatch[1]);
-			return this.parseProgressTime(timeMatch[1].trim(), now);
-		}
-
-		// 3. 即使模板没配置完整日期，如果文本里显式出现了完整日期，也可以尝试解析作为后备
-		const fullDateTimeMatch = text.match(/(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})/);
-		if (fullDateTimeMatch) {
-			console.log('[TimeTrackerParser] Fallback matched full datetime:', fullDateTimeMatch[1]);
-			return this.parseProgressTimeFromFullDate(fullDateTimeMatch[1].trim());
-		}
-
-		console.log('[TimeTrackerParser] No time pattern matched (Time Only Priority)');
+		console.log('[TimeTrackerParser] No time pattern matched');
 		return null;
 	}
 
@@ -211,7 +157,9 @@ export class TimeTrackerParser {
 	 * 解析时间字符串为 moment 对象
 	 * @param timeStr 时间字符串 (HH:mm)
 	 * @param now 当前时间（用于获取日期）
+	 * @deprecated 暂时保留，待功能测试完成后删除
 	 */
+	// @deprecated
 	private parseTimeString(timeStr: string, now: moment.Moment): moment.Moment | null {
 		const timeRegex = /^(\d{1,2}):(\d{2})$/;
 		const match = timeStr.match(timeRegex);

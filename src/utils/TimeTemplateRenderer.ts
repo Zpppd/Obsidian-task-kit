@@ -7,12 +7,14 @@ export class TimeTemplateRenderer {
    * @param template 模板字符串
    * @param startTime 开始时间
    * @param endTime 结束时间（可选）
+   * @param durationDate 预计算的耗时字符串（可选，如 "1小时30分钟"），支持跨天处理
    * @returns 渲染后的字符串
    */
   static render(
     template: string,
     startTime: moment.Moment,
-    endTime?: moment.Moment
+    endTime?: moment.Moment,
+    durationDate?: string
   ): string {
     if (!template || template.trim() === '') {
       return '';
@@ -30,14 +32,16 @@ export class TimeTemplateRenderer {
     if (endTime) {
       const end = endTime.format('HH:mm');
       const endDate = endTime.format('YYYY-MM-DD HH:mm');
+      
+      // ✅ 优先使用外部传入的 durationDate，否则内部计算
+      const finalDurationDate = durationDate || this.formatDurationDate(endTime.diff(startTime, 'minutes'));
       const durationMinutes = endTime.diff(startTime, 'minutes');
-      const durationDate = this.formatDurationDate(durationMinutes);
 
       result = result
         .replace(/\{end\}/g, end)
         .replace(/\{endDate\}/g, endDate)
         .replace(/\{duration\}/g, durationMinutes.toString())
-        .replace(/\{durationDate\}/g, durationDate);
+        .replace(/\{durationDate\}/g, finalDurationDate);
     } else {
       // 如果没有结束时间，移除相关变量占位符
       result = result

@@ -103,8 +103,11 @@ export class TimeTrackerService {
 		// ✅ 直接使用存储的开始时间，不需要从文本中提取！
 		const startTime = task.timeTracking.startTime;
 		
-		// 计算耗时
+		// ✅ 计算耗时（自动处理跨天）
 		const durationMinutes = this.calculateDuration(startTime, now);
+		
+		// ✅ 格式化耗时为可读字符串（如 "1小时30分钟"）
+		const durationDate = this.formatDuration(durationMinutes);
 		
 		// 更新任务状态
 		task.status = TaskStatus.Completed;
@@ -113,11 +116,12 @@ export class TimeTrackerService {
 		task.timeTracking.endTime = now.clone();
 		task.timeTracking.durationMinutes = durationMinutes;
 		
-		// ✅ 使用模板渲染引擎生成时间标记
+		// ✅ 使用模板渲染引擎生成时间标记（传入 durationDate）
 		const timeMarker = TimeTemplateRenderer.render(
 			this.plugin.settings.timeTracking.completedTemplate,
 			startTime,
-			now
+			now,
+			durationDate  // ← 新增参数
 		);
 		
 		// 构建新的任务行
@@ -126,7 +130,7 @@ export class TimeTrackerService {
 		
 		await this.taskParser.updateTaskLine(task, newLine);
 		
-		console.log(`✅ Task completed: ${task.content}, duration: ${durationMinutes} minutes`);
+		console.log(`✅ Task completed: ${task.content}, duration: ${durationMinutes} minutes (${durationDate})`);
 	}
 
 	/**
@@ -185,6 +189,24 @@ export class TimeTrackerService {
 		
 		const duration = adjustedEndTime.diff(startTime, 'minutes');
 		return Math.max(0, duration); // 确保不为负数
+	}
+
+	/**
+	 * 格式化耗时为可读字符串
+	 * @param minutes 耗时（分钟）
+	 * @returns 格式化后的字符串（如 "1小时30分钟" 或 "90分钟"）
+	 */
+	private formatDuration(minutes: number): string {
+		const hours = Math.floor(minutes / 60);
+		const remainingMinutes = minutes % 60;
+		
+		if (hours > 0 && remainingMinutes > 0) {
+			return `${hours}小时${remainingMinutes}分钟`;
+		} else if (hours > 0) {
+			return `${hours}小时`;
+		} else {
+			return `${remainingMinutes}分钟`;
+		}
 	}
 
 	/**

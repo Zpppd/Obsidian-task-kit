@@ -32,9 +32,9 @@
   $: filteredTasks = tasks.filter(task => {
     // 状态筛选
     if (statusFilter !== 'all') {
-      if (statusFilter === 'pending' && task.status !== ' ') return false;
-      if (statusFilter === 'progress' && task.status !== '/') return false;
-      if (statusFilter === 'completed' && task.status !== 'x') return false;
+      if (statusFilter === 'pending' && task.status !== 'pending') return false;
+      if (statusFilter === 'progress' && task.status !== 'progress') return false;
+      if (statusFilter === 'completed' && task.status !== 'completed') return false;
     }
     
     // 搜索筛选

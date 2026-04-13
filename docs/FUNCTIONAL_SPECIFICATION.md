@@ -50,7 +50,7 @@
 
 #### 支持的任务格式
 
-```markdown
+```
 <!-- 基础格式 -->
 - [ ] 普通任务
 - [x] 已完成任务
@@ -108,7 +108,7 @@
 
 #### 三态流转机制
 
-```mermaid
+```
 stateDiagram-v2
     [*] --> Pending: 初始状态
     Pending --> Progress: 点击 checkbox
@@ -135,7 +135,7 @@ stateDiagram-v2
 
 **1. Pending → Progress（未开始 → 进行中）**
 
-```markdown
+```
 切换前：- [ ] 写报告
 切换后：- [/] 写报告 [开始：14:30]
 
@@ -147,7 +147,7 @@ stateDiagram-v2
 
 **2. Progress → Completed（进行中 → 已完成）**
 
-```markdown
+```
 切换前：- [/] 写报告 [开始：14:30]
 切换后：- [x] 写报告 [14:30 - 15:45]
 
@@ -160,7 +160,7 @@ stateDiagram-v2
 
 **3. Completed → Pending（已完成 → 未开始 - 回退）**
 
-```markdown
+```
 切换前：- [x] 写报告 [14:30 - 15:45]
 切换后：- [ ] 写报告
 
@@ -178,17 +178,17 @@ stateDiagram-v2
 用户可在设置中选择三种显示模式：
 
 **模式 A: 起止时间**（默认）
-```markdown
+```
 - [x] 任务 [14:30 - 15:45]
 ```
 
 **模式 B: 总耗时**
-```markdown
+```
 - [x] 任务 [⏱️ 75 分钟]
 ```
 
 **模式 C: AI 总结**（需配置 API）
-```markdown
+```
 - [x] 任务 [📝 深度工作 1 小时 15 分]
 ```
 
@@ -200,7 +200,7 @@ stateDiagram-v2
 
 只有同时满足以下条件才会触发提醒：
 
-```typescript
+```
 interface ReminderCondition {
   hasReminderTag: true;      // ✅ 包含 (@日期时间)
   isNotCompleted: true;      // ✅ 状态不是 [x]
@@ -217,7 +217,7 @@ interface ReminderCondition {
 
 #### 提醒执行流程
 
-```mermaid
+```
 flowchart TD
     A[定时扫描 30s] --> B{获取过期提醒}
     B --> C{过滤已完成}
@@ -246,7 +246,7 @@ flowchart TD
 - 提供丰富操作按钮
 
 实现：
-```typescript
+```
 new Notice(`⏰ 提醒：${task.content}`, 10000);
 // 配合 Modal 显示详情和操作按钮
 ```
@@ -259,7 +259,7 @@ new Notice(`⏰ 提醒：${task.content}`, 10000);
 - 符合系统通知规范
 
 实现：
-```typescript
+```
 const Notification = require('electron').remote.Notification;
 const notification = new Notification({
   title: 'Obsidian Reminder',
@@ -295,6 +295,54 @@ notification.show();
 - 点击右侧边栏图标
 - 命令面板：`Task Master: Open Panel`
 - 快捷键：`Ctrl/Cmd + Shift + T`
+
+#### 任务扫描目录白名单 ⭐ 新增
+
+**功能描述**：
+允许用户配置需要扫描任务的目录列表，实现精确控制哪些目录下的任务会出现在任务面板中。
+
+**使用场景**：
+- 知识库中有大量临时性、草稿性的任务列表，不希望出现在正式的任务管理面板中
+- 只关注特定项目或工作流中的任务
+- 提升性能：减少需要解析的文件数量
+
+**配置方式**：
+1. 打开设置 → Task Master Pro → "任务扫描设置"
+2. 点击"+ 添加目录"按钮
+3. 输入目录路径（相对于仓库根目录），例如：
+   - `日记` - 扫描日记文件夹
+   - `Projects/Tasks` - 扫描 Projects/Tasks 及其子目录
+   - `Work/2024` - 扫描 Work/2024 及其子目录
+4. 按回车或失去焦点自动保存
+
+**工作原理**：
+```
+// 白名单检查逻辑
+if (settings.scanDirectories.length > 0) {
+  // 文件必须在白名单目录或其子目录中
+  const isInWhitelist = settings.scanDirectories.some(dir => {
+    return file.path.startsWith(dir + '/') || file.path === dir;
+  });
+  
+  if (!isInWhitelist) {
+    return true; // 跳过该文件
+  }
+}
+```
+
+**注意事项**：
+- ✅ 白名单为空时，扫描所有目录（保持向后兼容）
+- ✅ 支持递归子目录匹配（添加 `Projects` 会自动包含 `Projects/SubFolder`）
+- ✅ 路径标准化处理（Windows `\` 和 Unix `/` 兼容）
+- ❌ 不验证目录存在性（不存在的目录静默忽略）
+- ❌ 实时去重检测（重复目录显示红色边框警告）
+
+**与其他过滤共存**：
+- 仍然会跳过隐藏文件（以 `.` 开头）
+- 仍然会跳过系统文件夹（`.obsidian`, `.git`, `node_modules`）
+- 白名单过滤优先级最高
+
+---
 
 #### 列表视图（默认）
 
@@ -383,7 +431,7 @@ notification.show();
 
 自动提取任务中的所有 `#tag`:
 
-```markdown
+```
 - [ ] 任务文本 #工作/项目 #重要 @老板
 ```
 
@@ -466,7 +514,7 @@ vault/
 
 #### 模板文件格式
 
-```markdown
+```
 ---
 recurring:
   frequency: daily             # daily | weekly | monthly
@@ -509,7 +557,7 @@ recurring:
 
 **生成流程**:
 
-```mermaid
+```
 flowchart TD
     A[当前日期：2024-01-15 周一] --> B[扫描模板文件夹]
     B --> C{遍历每个模板}
@@ -678,7 +726,7 @@ flowchart TD
 
 ### 核心类设计
 
-```typescript
+```
 // ========== 主插件入口 ==========
 class TaskMasterProPlugin extends Plugin {
   // 核心服务
@@ -1139,7 +1187,7 @@ class RecurringTaskEngine {
 
 在任意 Markdown 文件中输入：
 
-```markdown
+```
 - [ ] 买咖啡 (@10:00) #生活
 ```
 
@@ -1149,7 +1197,7 @@ class RecurringTaskEngine {
 
 点击任务前的 checkbox：
 
-```markdown
+```
 <!-- 点击后 -->
 - [/] 买咖啡 [开始：09:30] #生活
 ```
@@ -1158,7 +1206,7 @@ class RecurringTaskEngine {
 
 再次点击 checkbox：
 
-```markdown
+```
 <!-- 再次点击后 -->
 - [x] 买咖啡 [09:30 - 09:45] #生活
 ```
@@ -1171,7 +1219,7 @@ class RecurringTaskEngine {
 
 #### 设置任务提醒
 
-```markdown
+```
 - [ ] 下午站会 (@今天 16:00) #工作/会议
 - [ ] 提交周报 (@周五 17:00) #工作/重要
 ```
@@ -1180,7 +1228,7 @@ class RecurringTaskEngine {
 
 #### 使用标签分类
 
-```markdown
+```
 - [ ] 写项目报告 #工作/文档 @重要
 - [ ] 看书 30 分钟 #学习
 - [ ] 跑步 #生活/健康
@@ -1209,7 +1257,7 @@ class RecurringTaskEngine {
 1. 创建文件 `_recurring-tasks/daily.md`
 2. 输入以下内容：
 
-```markdown
+```
 ---
 recurring:
   frequency: daily
@@ -1234,6 +1282,24 @@ A: 检查以下几点：
 2. 是否在筛选器中隐藏了该文件
 3. 点击面板的刷新按钮
 4. 检查任务是否被标签筛选过滤了
+5. **检查是否配置了任务扫描白名单**：如果设置了白名单，只有白名单目录中的任务会显示
+
+**Q: 如何配置任务扫描白名单？**
+
+A: 白名单功能允许你精确控制哪些目录的任务会被扫描：
+1. 打开设置 → Task Master Pro → "任务扫描设置"
+2. 点击"+ 添加目录"按钮
+3. 输入目录路径（相对于仓库根目录），例如：
+   - `日记` - 只扫描日记文件夹
+   - `Projects/Tasks` - 扫描 Projects/Tasks 及其子目录
+4. 按回车自动保存
+5. 刷新任务面板查看效果
+
+**注意**：
+- 白名单为空时，扫描所有目录
+- 支持递归子目录匹配
+- 不验证目录存在性（不存在的目录静默忽略）
+- 重复目录会显示红色边框警告
 
 **Q: 提醒没有按时触发？**
 

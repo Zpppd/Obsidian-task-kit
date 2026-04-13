@@ -15,6 +15,9 @@ export interface TimeTrackingSettings {
 export interface PluginSettings {
   /** 时间追踪设置 */
   timeTracking: TimeTrackingSettings;
+  
+  /** 任务扫描目录白名单（空数组表示扫描所有目录） */
+  scanDirectories: string[];
 }
 
 /**
@@ -24,7 +27,8 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   timeTracking: {
     progressTemplate: '[开始：{start}]',
     completedTemplate: '[开始：{start} - 结束：{end}]'
-  }
+  },
+  scanDirectories: []
 };
 
 /**

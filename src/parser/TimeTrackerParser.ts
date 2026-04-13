@@ -20,8 +20,23 @@ export class TimeTrackerParser {
 	 * @returns 时间追踪信息或 null
 	 */
 	parseTimeTracking(text: string, now: moment.Moment): TimeTracking | null {
-		// ✅ 优先匹配完整日期时间格式（YYYY-MM-DD HH:mm）
-		const fullDateMatch = text.match(/(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})/g);
+		// ✅ 优先匹配 (::...) 新格式，避免与 Markdown 链接语法冲突
+		const identifierMatch = text.match(/\(::([^)]+)\)/);
+		
+		if (identifierMatch) {
+			const content = identifierMatch[1].trim(); // 提取括号内的内容
+			return this.parseIdentifierContent(content, now);
+		}
+		
+		return null;
+	}
+
+	/**
+	 * 解析标识符内容（支持多种时间格式）
+	 */
+	private parseIdentifierContent(content: string, now: moment.Moment): TimeTracking | null {
+		// ✅ 策略1：完整日期时间格式（YYYY-MM-DD HH:mm - YYYY-MM-DD HH:mm）
+		const fullDateMatch = content.match(/(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})/g);
 		
 		if (fullDateMatch && fullDateMatch.length >= 2) {
 			return this.parseCompletedTime(fullDateMatch[0].trim(), fullDateMatch[1].trim(), now);
@@ -29,8 +44,8 @@ export class TimeTrackerParser {
 			return this.parseProgressTimeFromFullDate(fullDateMatch[0].trim());
 		}
 		
-		// ✅ 降级到纯时间格式（HH:mm）
-		const timeMatch = text.match(/\b(\d{1,2}:\d{2})\b/g);
+		// ✅ 策略2：纯时间格式（HH:mm - HH:mm 或 HH:mm）
+		const timeMatch = content.match(/\b(\d{1,2}:\d{2})\b/g);
 		
 		if (timeMatch && timeMatch.length >= 2) {
 			const startTimeStr = timeMatch[0].trim();
@@ -145,23 +160,16 @@ export class TimeTrackerParser {
 
 	/**
 	 * 从文本中移除时间追踪标记
-	 * ✅ 支持多种格式，避免与链接语法冲突
+	 * ✅ 支持 (::...) 新格式，避免与链接语法冲突
 	 * 
 	 * 支持的格式：
-	 * 1. [HH:mm - HH:mm]（纯时间，无其他文字）
-	 * 2. [YYYY-MM-DD HH:mm - YYYY-MM-DD HH:mm]（完整日期时间）
-	 * 
-	 * 注意：不会误匹配 [链接文本](url) 或 [[内部链接]]
+	 * 1. (::HH:mm) - 进行中任务
+	 * 2. (::HH:mm - HH:mm) - 已完成任务
+	 * 3. (::YYYY-MM-DD HH:mm - YYYY-MM-DD HH:mm) - 完整日期时间
 	 */
 	removeTimeTrackingTag(text: string): string {
-		// ✅ 策略1：移除完整日期时间格式（最明确，优先级最高）
-		// 匹配：[2026-04-13 14:30 - 2026-04-13 15:45]
-		text = text.replace(/\s*\[\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}(?:\s*[-–—]\s*\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})?\]/g, '');
-		
-		// ✅ 策略2：移除纯时间格式的标记（严格匹配，避免误匹配链接）
-		// 匹配：[14:30]、[14:30 - 15:45]
-		// 关键：要求方括号内只能包含数字、冒号、空格和连接符，不能有中文或字母
-		text = text.replace(/\s*\[\d{1,2}:\d{2}(?:\s*[-–—]\s*\d{1,2}:\d{2})?\]/g, '');
+		// ✅ 移除 (::...) 格式的标记
+		text = text.replace(/\s*\(::[^)]+\)/g, '');
 		
 		return text.trim();
 	}

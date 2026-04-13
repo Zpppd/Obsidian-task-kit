@@ -21,85 +21,113 @@ export class TimeTrackingSettingsTab extends PluginSettingTab {
 
 		// 进行中状态模板
 		const progressSetting = new Setting(containerEl)
-			.setName('进行中状态模板')
-			.setDesc('任务进入进行中状态时添加的时间标记格式');
+			.setName('进行中状态模板');
+		
+		// 手动设置描述内容，支持换行
+		const progressDescEl = progressSetting.descEl;
+		progressDescEl.innerHTML = this.createTemplateDescription(
+			'任务进入进行中状态时添加的时间标记格式',
+			'(::开始：{startDate})',
+			this.plugin.settings.timeTracking.progressTemplate,
+			false
+		);
+		progressDescEl.style.whiteSpace = 'pre-line';
 		
 		progressSetting.addText(text => text
-			.setPlaceholder('[开始：{start}]')
+			.setPlaceholder('(::{start})')
 			.setValue(this.plugin.settings.timeTracking.progressTemplate)
 			.onChange(async (value) => {
-				const validation = this.validateTemplateWithMixedFormatCheck(value, '进行中状态模板');
+				const validation = this.validateTemplateWithMixedFormatCheck(value, '进行中状态模板', 'progress');
 				
 				if (!validation.valid) {
 					progressErrorEl.setText(`❌ ${validation.error}`);
 					progressErrorEl.style.color = '#e74c3c';
 					progressErrorEl.style.marginTop = '8px';
+					progressWarningEl.setText('');
 					return;
 				}
 				
 				progressErrorEl.setText('');
 				
+				// 显示警告（如果有）
+				if (validation.warning) {
+					progressWarningEl.setText(`⚠️ ${validation.warning}`);
+					progressWarningEl.style.color = '#f39c12';
+					progressWarningEl.style.marginTop = '8px';
+				} else {
+					progressWarningEl.setText('');
+				}
+				
 				this.plugin.settings.timeTracking.progressTemplate = value;
 				await this.plugin.saveSettings();
 				
-				progressPreviewEl.setText(
-					`预览: ${TimeTemplateRenderer.generatePreview(value, false)}`
+				// 实时更新描述中的预览
+				progressDescEl.innerHTML = this.createTemplateDescription(
+					'任务进入进行中状态时添加的时间标记格式',
+					'(::开始：{startDate})',
+					value,
+					false
 				);
 			})
 		);
 		
 		const progressErrorEl = containerEl.createDiv({ cls: 'setting-error' });
-		
-		const progressPreviewEl = containerEl.createDiv({ 
-			cls: 'setting-item-description time-tracking-preview' 
-		});
-		progressPreviewEl.setText(
-			`预览: ${TimeTemplateRenderer.generatePreview(
-				this.plugin.settings.timeTracking.progressTemplate,
-				false
-			)}`
-		);
+		const progressWarningEl = containerEl.createDiv({ cls: 'setting-warning' });
 
 		// 已完成状态模板
 		const completedSetting = new Setting(containerEl)
-			.setName('已完成状态模板')
-			.setDesc('任务完成时添加的时间标记格式');
+			.setName('已完成状态模板');
+		
+		// 手动设置描述内容，支持换行
+		const completedDescEl = completedSetting.descEl;
+		completedDescEl.innerHTML = this.createTemplateDescription(
+			'任务完成时添加的时间标记格式',
+			'(::开始：{startDate} - 结束：{endDate})',
+			this.plugin.settings.timeTracking.completedTemplate,
+			true
+		);
+		completedDescEl.style.whiteSpace = 'pre-line';
 		
 		completedSetting.addText(text => text
-			.setPlaceholder('[开始：{start} - 结束：{end}]')
+			.setPlaceholder('(::{start} - {end})')
 			.setValue(this.plugin.settings.timeTracking.completedTemplate)
 			.onChange(async (value) => {
-				const validation = this.validateTemplateWithMixedFormatCheck(value, '已完成状态模板');
+				const validation = this.validateTemplateWithMixedFormatCheck(value, '已完成状态模板', 'completed');
 				
 				if (!validation.valid) {
 					completedErrorEl.setText(`❌ ${validation.error}`);
 					completedErrorEl.style.color = '#e74c3c';
 					completedErrorEl.style.marginTop = '8px';
+					completedWarningEl.setText('');
 					return;
 				}
 				
 				completedErrorEl.setText('');
 				
+				// 显示警告（如果有）
+				if (validation.warning) {
+					completedWarningEl.setText(`⚠️ ${validation.warning}`);
+					completedWarningEl.style.color = '#f39c12';
+					completedWarningEl.style.marginTop = '8px';
+				} else {
+					completedWarningEl.setText('');
+				}
+				
 				this.plugin.settings.timeTracking.completedTemplate = value;
 				await this.plugin.saveSettings();
 				
-				completedPreviewEl.setText(
-					`预览: ${TimeTemplateRenderer.generatePreview(value, true)}`
+				// 实时更新描述中的预览
+				completedDescEl.innerHTML = this.createTemplateDescription(
+					'任务完成时添加的时间标记格式',
+					'(::开始：{startDate} - 结束：{endDate})',
+					value,
+					true
 				);
 			})
 		);
 		
 		const completedErrorEl = containerEl.createDiv({ cls: 'setting-error' });
-		
-		const completedPreviewEl = containerEl.createDiv({ 
-			cls: 'setting-item-description time-tracking-preview' 
-		});
-		completedPreviewEl.setText(
-			`预览: ${TimeTemplateRenderer.generatePreview(
-				this.plugin.settings.timeTracking.completedTemplate,
-				true
-			)}`
-		);
+		const completedWarningEl = containerEl.createDiv({ cls: 'setting-warning' });
 
 		// 重置为默认值按钮
 		new Setting(containerEl)
@@ -108,8 +136,8 @@ export class TimeTrackingSettingsTab extends PluginSettingTab {
 			.addButton(button => button
 				.setButtonText('重置')
 				.onClick(async () => {
-					this.plugin.settings.timeTracking.progressTemplate = '[开始：{start}]';
-					this.plugin.settings.timeTracking.completedTemplate = '[开始：{start} - 结束：{end}]';
+					this.plugin.settings.timeTracking.progressTemplate = '(::{start})';
+					this.plugin.settings.timeTracking.completedTemplate = '(::{start} - {end})';
 					await this.plugin.saveSettings();
 					this.display();
 				})
@@ -315,28 +343,56 @@ export class TimeTrackingSettingsTab extends PluginSettingTab {
 	}
 
 	/**
-	 * 增强的模板验证：禁止混合格式
+	 * 创建模板描述文本（包含示例和预览）
+	 */
+	private createTemplateDescription(
+		description: string,
+		example: string,
+		template: string,
+		isCompleted: boolean
+	): string {
+		let preview: string;
+		try {
+			preview = TimeTemplateRenderer.generatePreview(template, isCompleted);
+		} catch (error) {
+			preview = '模板格式错误';
+		}
+
+		// 使用 \n 换行符，配合 CSS white-space: pre-line 实现换行
+		return `${description}\n示例: ${example}\n预览: ${preview}`;
+	}
+
+	/**
+	 * 增强的模板验证：包含基础校验和语义校验
 	 */
 	private validateTemplateWithMixedFormatCheck(
 		template: string,
-		templateName: string
-	): { valid: boolean; error?: string } {
+		templateName: string,
+		templateType: 'progress' | 'completed'
+	): { valid: boolean; error?: string; warning?: string } {
+		// 1. 基础校验（语法、变量名、重复等）
 		const baseValidation = TimeTemplateRenderer.validateTemplate(template);
 		if (!baseValidation.valid) {
 			return baseValidation;
 		}
 
-		const hasFullDate = template.includes('{startDate}') || template.includes('{endDate}');
-		const hasTimeOnly = template.includes('{start}') || template.includes('{end}');
+		// 2. 语义校验（配对、必填项、混合格式等）
+		const semanticValidation = TimeTemplateRenderer.validateTemplateSemantics(
+			template,
+			templateType
+		);
 
-		if (hasFullDate && hasTimeOnly) {
+		if (!semanticValidation.valid) {
 			return {
 				valid: false,
-				error: `${templateName} 不允许混合格式：不能同时使用 {startDate}/{endDate} 和 {start}/{end}`
+				error: `${templateName}：${semanticValidation.error}`
 			};
 		}
 
-		return { valid: true };
+		return {
+			valid: true,
+			warning: semanticValidation.warning
+		};
 	}
 
 	private createTemplateHelp(containerEl: HTMLElement): void {
@@ -344,18 +400,34 @@ export class TimeTrackingSettingsTab extends PluginSettingTab {
 		helpDiv.createEl('h3', { text: '可用变量' });
 		
 		const table = helpDiv.createEl('table');
+		table.style.width = '100%';
+		table.style.borderCollapse = 'collapse';
+		table.style.marginBottom = '12px';
+		
 		const thead = table.createEl('thead');
 		const headerRow = thead.createEl('tr');
-		headerRow.createEl('th', { text: '变量' });
-		headerRow.createEl('th', { text: '说明' });
-		headerRow.createEl('th', { text: '示例' });
+		headerRow.style.backgroundColor = 'var(--background-modifier-hover)';
+		
+		const headers = ['变量', '说明', '示例'];
+		headers.forEach(text => {
+			const th = headerRow.createEl('th', { text });
+			th.style.border = '1px solid var(--background-modifier-border)';
+			th.style.padding = '8px 12px';
+			th.style.textAlign = 'left';
+			th.style.fontWeight = '600';
+		});
 
 		const tbody = table.createEl('tbody');
 		TEMPLATE_VARIABLES.forEach(variable => {
 			const row = tbody.createEl('tr');
-			row.createEl('td', { text: variable.variable });
-			row.createEl('td', { text: variable.description });
-			row.createEl('td', { text: variable.example });
+			row.style.backgroundColor = 'var(--background-primary)';
+			
+			const cells = [variable.variable, variable.description, variable.example];
+			cells.forEach(text => {
+				const td = row.createEl('td', { text });
+				td.style.border = '1px solid var(--background-modifier-border)';
+				td.style.padding = '6px 12px';
+			});
 		});
 
 		// 混合格式警告
@@ -367,28 +439,12 @@ export class TimeTrackingSettingsTab extends PluginSettingTab {
 		warningDiv.style.borderRadius = '4px';
 		warningDiv.innerHTML = `
 			<strong>⚠️ 重要提示：</strong><br>
-			不允许混合格式：模板中不能同时使用 <code>{startDate}/{endDate}</code> 和 <code>{start}/{end}</code><br>
-			请选择其中一种格式使用。
+			1. 不允许混合格式：模板中不能同时使用 <code>{startDate}/{endDate}</code> 和 <code>{start}/{end}</code><br>
+			2. 变量必须配对：<code>{start}</code> 与 <code>{end}</code>、<code>{startDate}</code> 与 <code>{endDate}</code> 必须成对出现<br>
+			3. 进行中模板必须包含开始时间，已完成模板必须包含时间范围或耗时信息<br>
+			4. 建议使用 <code>(::...)</code> 格式以避免与 Markdown 链接冲突
 		`;
 
-		// 常用示例
-		helpDiv.createEl('h3', { text: '常用示例' });
-		const examples = [
-			{ name: '简洁模式', progress: '[{start}]', completed: '[{start} - {end}]' },
-			{ name: '标注模式（默认）', progress: '[开始：{start}]', completed: '[开始：{start} - 结束：{end}]' },
-			{ name: '中文模式', progress: '[{start}开始]', completed: '[{start}至{end}]' },
-			{ name: '完整模式', progress: '[{startDate}]', completed: '[{startDate} - {endDate}]' },
-			{ name: '含耗时', progress: '[{start}]', completed: '[{start} - {end}，耗时{duration}分钟]' }
-		];
-
-		const exampleList = helpDiv.createEl('ul');
-		examples.forEach(example => {
-			const li = exampleList.createEl('li');
-			li.createEl('strong', { text: example.name });
-			li.createEl('br');
-			li.appendText(`进行中: ${example.progress}`);
-			li.createEl('br');
-			li.appendText(`已完成: ${example.completed}`);
-		});
 	}
+
 }

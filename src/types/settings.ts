@@ -25,8 +25,8 @@ export interface PluginSettings {
  */
 export const DEFAULT_SETTINGS: PluginSettings = {
   timeTracking: {
-    progressTemplate: '[开始：{start}]',
-    completedTemplate: '[开始：{start} - 结束：{end}]'
+    progressTemplate: '(::{start})',
+    completedTemplate: '(::{start} - {end})'
   },
   scanDirectories: []
 };

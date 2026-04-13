@@ -18,79 +18,61 @@ export default class TaskMasterProPlugin extends Plugin {
 	settings: PluginSettings = DEFAULT_SETTINGS;
 
 	async onload() {
-		console.log('Task Master Pro loaded!');
-		
-		// ✅ 加载设置
 		await this.loadSettings();
 		
-		// ✅ 初始化任务解析器（传入 getter 函数，支持动态更新）
 		this.taskParser = new TaskParser(this.app, () => this.settings);
 		
-		// 初始化时间追踪服务（传入插件实例以访问设置）
 		this.timeTrackerService = new TimeTrackerService(this.app, this.taskParser, this);
 		
-		// ✅ 初始化任务管理服务
 		this.taskManagerService = new TaskManagerService(
 			this.app,
 			this.taskParser,
 			() => this.settings
 		);
 		
-		// ✅ 使用 DOM 事件监听方案拦截编辑器中的 checkbox 点击
 		this.registerEditorCheckboxInterceptor();
 		
-		// 注册任务面板视图
 		this.registerView(
 			TASK_PANEL_VIEW_TYPE,
 			(leaf) => new TaskPanelView(leaf, this.taskParser, this.timeTrackerService, this.taskManagerService, this)
 		);
 		
-		// ✅ 注册设置 Tab
 		this.addSettingTab(new TimeTrackingSettingsTab(this.app, this));
 		
-		// 注册打开任务面板命令
 		this.addCommand({
 			id: 'open-task-panel',
 			name: 'Open Task Panel',
 			callback: () => {
-				console.log('Opening task panel...');
 				this.openTaskPanel();
 			}
 		});
 		
-		// 注册解析所有任务命令（用于测试）
 		this.addCommand({
 			id: 'parse-all-tasks',
 			name: 'Parse All Tasks (Test)',
 			callback: async () => {
-				console.log('Parsing all tasks...');
 				await this.testParseAllTasks();
 			}
 		});
 		
-		// 注册解析当前文件任务命令（用于测试）
 		this.addCommand({
 			id: 'parse-current-file-tasks',
 			name: 'Parse Current File Tasks (Test)',
 			callback: async () => {
-				console.log('Parsing current file tasks...');
 				await this.testParseCurrentFile();
 			}
 		});
 		
-		// 注册测试时间追踪服务命令
 		this.addCommand({
 			id: 'test-time-tracker',
 			name: 'Test Time Tracker Service',
 			callback: async () => {
-				console.log('Testing TimeTrackerService...');
 				await this.testTimeTracker();
 			}
 		});
 	}
 
 	onunload() {
-		console.log('Task Master Pro unloaded!');
 		// 清理工作由 Obsidian 自动处理
 	}
 	
@@ -99,7 +81,6 @@ export default class TaskMasterProPlugin extends Plugin {
 	 */
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-		console.log('[Settings] Loaded:', this.settings);
 	}
 	
 	/**
@@ -107,7 +88,6 @@ export default class TaskMasterProPlugin extends Plugin {
 	 */
 	async saveSettings() {
 		await this.saveData(this.settings);
-		console.log('[Settings] Saved:', this.settings);
 	}
 
 	/**
@@ -165,6 +145,7 @@ export default class TaskMasterProPlugin extends Plugin {
 						const cmView = editor.cm;
 						
 						if (!cmView) {
+							console.error('[CheckboxInterceptor] CodeMirror view not found');
 							return;
 						}
 						
@@ -177,6 +158,7 @@ export default class TaskMasterProPlugin extends Plugin {
 						// ✅ 获取当前活动文件
 						const activeFile = this.app.workspace.getActiveFile();
 						if (!activeFile) {
+							console.error('[CheckboxInterceptor] No active file');
 							return;
 						}
 						
@@ -187,6 +169,7 @@ export default class TaskMasterProPlugin extends Plugin {
 						const task = tasks.find(t => t.line === lineNumber);
 						
 						if (!task) {
+							console.warn('[CheckboxInterceptor] Task not found at line', lineNumber);
 							return;
 						}
 						
@@ -198,10 +181,10 @@ export default class TaskMasterProPlugin extends Plugin {
 						// Obsidian 会自动同步到编辑器视图
 						
 					} catch (error) {
-						// Silently fail or handle error without logging to console in production
+						console.error('[CheckboxInterceptor] Failed to handle checkbox click:', error);
 					}
 				};
-				
+
 				// 添加事件监听器
 				activeView.contentEl.addEventListener('click', handleClick);
 				
@@ -246,27 +229,10 @@ export default class TaskMasterProPlugin extends Plugin {
 			const allTasks = await this.taskParser.parseAllFiles();
 			let totalTasks = 0;
 			
-			console.log(`Found ${allTasks.size} files with tasks:`);
-			
-			for (const [file, tasks] of allTasks) {
-				console.log(`\n📄 ${file.path} (${tasks.length} tasks):`);
+			for (const [_, tasks] of allTasks) {
 				totalTasks += tasks.length;
-				
-				tasks.forEach(task => {
-					console.log(`  - [${task.status}] ${task.content}`);
-					if (task.tags.length > 0) {
-						console.log(`    Tags: ${task.tags.join(', ')}`);
-					}
-					if (task.reminderTime) {
-						console.log(`    Reminder: ${task.reminderTime.format('YYYY-MM-DD HH:mm')}`);
-					}
-					if (task.timeTracking) {
-						console.log(`    Time: ${JSON.stringify(task.timeTracking)}`);
-					}
-				});
 			}
 			
-			console.log(`\n✅ Total: ${totalTasks} tasks found`);
 			new Notice(`Parsed ${totalTasks} tasks from ${allTasks.size} files`);
 		} catch (error) {
 			console.error('Failed to parse tasks:', error);
@@ -288,22 +254,6 @@ export default class TaskMasterProPlugin extends Plugin {
 			
 			const tasks = await this.taskParser.parseFile(activeFile);
 			
-			console.log(`\n📄 ${activeFile.path} (${tasks.length} tasks):`);
-			
-			tasks.forEach(task => {
-				console.log(`  Line ${task.line}: - [${task.status}] ${task.content}`);
-				if (task.tags.length > 0) {
-					console.log(`    Tags: ${task.tags.join(', ')}`);
-				}
-				if (task.reminderTime) {
-					console.log(`    Reminder: ${task.reminderTime.format('YYYY-MM-DD HH:mm')}`);
-				}
-				if (task.timeTracking) {
-					console.log(`    Time Tracking:`, task.timeTracking);
-				}
-			});
-			
-			console.log(`\n✅ Parsed ${tasks.length} tasks`);
 			new Notice(`Parsed ${tasks.length} tasks from current file`);
 		} catch (error) {
 			console.error('Failed to parse current file:', error);
@@ -331,36 +281,19 @@ export default class TaskMasterProPlugin extends Plugin {
 				return;
 			}
 			
-			console.log('\n🧪 Testing TimeTrackerService\n');
-			console.log(`Found ${tasks.length} tasks in ${activeFile.path}\n`);
-			
 			// 选择第一个任务进行测试
 			const testTask = tasks[0];
-			console.log('📋 Test Task:', testTask.content);
-			console.log('   Initial Status:', testTask.status);
-			console.log('   Original Line:', testTask.originalLine);
-			console.log('   Time Tracking:', testTask.timeTracking);
-			console.log('');
 			
 			// 测试场景 1: Pending → Progress
 			if (testTask.status === 'pending') {
-				console.log('🔄 Test 1: Pending → Progress');
 				await this.timeTrackerService.toggleTaskStatus(testTask);
 				
 				// 重新解析以验证更新
 				const updatedTasks = await this.taskParser.parseFile(activeFile);
 				const updatedTask = updatedTasks.find(t => t.id === testTask.id);
 				
-				if (updatedTask) {
-					console.log('   New Status:', updatedTask.status);
-					console.log('   New Line:', updatedTask.originalLine);
-					console.log('   Time Tracking:', updatedTask.timeTracking);
-					console.log('   ✅ Test 1 Passed\n');
-				}
-				
 				// 测试场景 2: Progress → Completed
 				if (updatedTask && updatedTask.status === 'progress') {
-					console.log('🔄 Test 2: Progress → Completed');
 					await this.timeTrackerService.toggleTaskStatus(updatedTask);
 					
 					// 重新解析以验证更新
@@ -368,57 +301,16 @@ export default class TaskMasterProPlugin extends Plugin {
 					const completedTask = completedTasks.find(t => t.id === updatedTask.id);
 					
 					if (completedTask) {
-						console.log('   New Status:', completedTask.status);
-						console.log('   New Line:', completedTask.originalLine);
-						console.log('   Time Tracking:', completedTask.timeTracking);
-						console.log('   Duration:', completedTask.timeTracking?.durationMinutes, 'minutes');
-						console.log('   ✅ Test 2 Passed\n');
-						
 						// 测试场景 3: Completed → Pending (回退)
-						console.log('🔄 Test 3: Completed → Pending (Reset)');
 						await this.timeTrackerService.toggleTaskStatus(completedTask);
-						
-						// 重新解析以验证更新
-						const resetTasks = await this.taskParser.parseFile(activeFile);
-						const resetTask = resetTasks.find(t => t.id === completedTask.id);
-						
-						if (resetTask) {
-							console.log('   New Status:', resetTask.status);
-							console.log('   New Line:', resetTask.originalLine);
-							console.log('   Time Tracking:', resetTask.timeTracking);
-							
-							// ⚠️ 关键验证：确保时间追踪已清除
-							if (resetTask.timeTracking === undefined) {
-								console.log('   ✅ Time tracking cleared successfully');
-								console.log('   ✅ Test 3 Passed\n');
-							} else {
-								console.log('   ❌ ERROR: Time tracking not cleared!');
-								console.log('   ❌ Test 3 Failed\n');
-							}
-						}
 					}
 				}
-			} else {
-				console.log('⚠️  First task is not in pending state, skipping automated test');
-				console.log('   Please create a pending task (- [ ]) to test the full cycle\n');
 			}
 			
-			// 显示所有任务的当前状态
-			console.log('📊 Current State of All Tasks:');
-			const finalTasks = await this.taskParser.parseFile(activeFile);
-			finalTasks.forEach((task, index) => {
-				console.log(`   ${index + 1}. [${task.status}] ${task.content}`);
-				if (task.timeTracking) {
-					const displayText = this.timeTrackerService.formatDisplayText(task, 'range');
-					console.log(`      Time: ${displayText}`);
-				}
-			});
-			
-			console.log('\n✅ TimeTrackerService test completed');
-			new Notice('TimeTrackerService test completed. Check console for details.');
+			new Notice('TimeTrackerService test completed.');
 			
 		} catch (error) {
-			console.error('❌ TimeTrackerService test failed:', error);
+			console.error('TimeTrackerService test failed:', error);
 			new Notice('TimeTrackerService test failed. Check console for details.');
 		}
 	}

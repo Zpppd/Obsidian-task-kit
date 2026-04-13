@@ -64,11 +64,13 @@ export class TaskPanelView extends ItemView {
           onToggle: this.handleTaskToggle.bind(this),
           onClick: this.handleTaskClick.bind(this),
           onFilterChange: this.handleFilterChange.bind(this),
-          timeTrackerService: this.timeTrackerService // ✅ 传递 TimeTrackerService
+          timeTrackerService: this.timeTrackerService
         }
       });
 
-      console.log('[TaskPanelView] View opened successfully');
+      // ✅ 订阅 TaskManagerService 的缓存更新事件（符合架构规范）
+      this.registerEventSubscription();
+
     } catch (error) {
       console.error('[TaskPanelView] Failed to open view:', error);
       new Notice('Task Panel: 打开失败，请查看控制台');
@@ -84,6 +86,83 @@ export class TaskPanelView extends ItemView {
   }
 
   /**
+   * 注册文件监听器（实现实时更新）
+   */
+  private registerFileListener(): void {
+    // 监听文件修改事件
+    this.plugin.registerEvent(
+      this.app.vault.on('modify', (file: TAbstractFile) => {
+        if (file instanceof TFile && !this.taskParser.shouldSkipFile(file)) {
+          this.handleFileModify(file);
+        }
+      })
+    );
+
+    // 监听文件删除事件
+    this.plugin.registerEvent(
+      this.app.vault.on('delete', (file: TAbstractFile) => {
+        if (file instanceof TFile) {
+          setTimeout(async () => {
+            await this.refreshTasks();
+          }, 1500); // ✅ 增加延迟，确保缓存清理完成
+        }
+      })
+    );
+
+    // 监听文件重命名事件
+    this.plugin.registerEvent(
+      this.app.vault.on('rename', (file: TAbstractFile, oldPath: string) => {
+        if (file instanceof TFile) {
+          setTimeout(async () => {
+            await this.refreshTasks();
+          }, 1500); // ✅ 增加延迟，确保缓存迁移完成
+        }
+      })
+    );
+  }
+
+  /**
+   * 订阅 TaskManagerService 的缓存更新事件
+   * ✅ 符合架构规范：View层不直接监听底层文件系统事件
+   */
+  private registerEventSubscription(): void {
+    this.plugin.registerEvent(
+      this.taskManagerService.on('cache-updated', (file: TFile) => {
+        // 从缓存获取最新数据并更新视图
+        setTimeout(() => {
+          try {
+            this.tasks = this.taskManagerService.getAllTasksFromCache();
+            this.updateView();
+          } catch (error) {
+            console.error('[TaskPanelView] Failed to update view after cache update:', error);
+          }
+        }, 100); // ✅ 短暂延迟确保 Svelte 渲染完成
+      })
+    );
+
+    // ✅ 监听文件删除和重命名事件（这些事件不会触发 cache-updated）
+    this.plugin.registerEvent(
+      this.app.vault.on('delete', (file: TAbstractFile) => {
+        if (file instanceof TFile) {
+          setTimeout(async () => {
+            await this.refreshTasks();
+          }, 100);
+        }
+      })
+    );
+
+    this.plugin.registerEvent(
+      this.app.vault.on('rename', (file: TAbstractFile, oldPath: string) => {
+        if (file instanceof TFile) {
+          setTimeout(async () => {
+            await this.refreshTasks();
+          }, 100);
+        }
+      })
+    );
+  }
+
+  /**
    * 加载所有任务
    */
   async loadTasks(): Promise<void> {
@@ -93,8 +172,6 @@ export class TaskPanelView extends ItemView {
       
       this.tasks = allTasks;
       this.updateView();
-      
-      console.log(`[TaskPanelView] Loaded ${allTasks.length} tasks`);
     } catch (error) {
       console.error('[TaskPanelView] Failed to load tasks:', error);
       throw error;
@@ -109,15 +186,12 @@ export class TaskPanelView extends ItemView {
   }
 
   /**
-   * 处理文件修改事件（委托给 TaskManagerService）
+   * 处理文件修改事件（已废弃，改用事件订阅）
+   * @deprecated 此方法已被 registerEventSubscription 替代
    */
   private handleFileModify(file: TFile): void {
-    // TaskManagerService 已经内部处理了文件监听和缓存更新
-    // 这里只需要从缓存重新加载并更新视图
-    setTimeout(async () => {
-      this.tasks = this.taskManagerService.getAllTasksFromCache();
-      this.updateView();
-    }, 100);
+    // 此方法不再使用，保留仅为向后兼容
+    // 实际逻辑已迁移到 registerEventSubscription 中
   }
 
   /**
@@ -217,7 +291,6 @@ export class TaskPanelView extends ItemView {
    */
   private updateView(): void {
     if (!this.svelteComponent || !this.containerEl.children[1]) {
-      console.warn('[TaskPanelView] Cannot update view: component or container not ready');
       return;
     }
 

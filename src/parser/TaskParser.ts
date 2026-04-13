@@ -5,6 +5,7 @@ import { TaskStatus } from '../types/task';
 import type { PluginSettings } from '../types/settings';
 import { ReminderParser } from './ReminderParser';
 import { TimeTrackerParser } from './TimeTrackerParser';
+import { TimeTemplateRenderer } from '../utils/TimeTemplateRenderer';
 
 /**
  * 任务解析器
@@ -320,6 +321,46 @@ export class TaskParser {
 			content += ` (@${timeStr})`;
 		}
 
+		// ✅ 添加时间追踪标记（如果存在）
+		if (task.timeTracking) {
+			const settings = this.getSettings();
+			if (task.timeTracking.endTime && task.timeTracking.durationMinutes !== undefined) {
+				// 已完成状态：使用 completedTemplate
+				const durationDate = this.formatDuration(task.timeTracking.durationMinutes);
+				const timeMarker = TimeTemplateRenderer.render(
+					settings.timeTracking.completedTemplate,
+					task.timeTracking.startTime,
+					task.timeTracking.endTime,
+					durationDate
+				);
+				content += ` ${timeMarker}`;
+			} else if (task.timeTracking.startTime) {
+				// 进行中状态：使用 progressTemplate
+				const timeMarker = TimeTemplateRenderer.render(
+					settings.timeTracking.progressTemplate,
+					task.timeTracking.startTime
+				);
+				content += ` ${timeMarker}`;
+			}
+		}
+
 		return `${prefix} [${statusMarker}] ${content}`;
+	}
+
+	/**
+	 * 格式化耗时为可读字符串
+	 * @private
+	 */
+	private formatDuration(minutes: number): string {
+		const hours = Math.floor(minutes / 60);
+		const remainingMinutes = minutes % 60;
+		
+		if (hours > 0 && remainingMinutes > 0) {
+			return `${hours}小时${remainingMinutes}分钟`;
+		} else if (hours > 0) {
+			return `${hours}小时`;
+		} else {
+			return `${remainingMinutes}分钟`;
+		}
 	}
 }

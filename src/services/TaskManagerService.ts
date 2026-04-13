@@ -1,4 +1,4 @@
-import { App, TFile, TAbstractFile } from 'obsidian';
+import { App, TFile, TAbstractFile, Events } from 'obsidian';
 import type { Task } from '../types/task';
 import { TaskParser } from '../parser/TaskParser';
 import type { PluginSettings } from '../types/settings';
@@ -12,8 +12,9 @@ import type { PluginSettings } from '../types/settings';
  * - 增量更新机制
  * - 文件变更监听
  * - 常用查询方法
+ * - 事件通知（缓存更新时通知订阅者）
  */
-export class TaskManagerService {
+export class TaskManagerService extends Events {
 	private app: App;
 	private taskParser: TaskParser;
 	private getSettings: () => PluginSettings;
@@ -32,6 +33,7 @@ export class TaskManagerService {
 		taskParser: TaskParser,
 		getSettings: () => PluginSettings
 	) {
+		super(); // ✅ 初始化 Events
 		this.app = app;
 		this.taskParser = taskParser;
 		this.getSettings = getSettings;
@@ -46,27 +48,20 @@ export class TaskManagerService {
 	 */
 	async loadAllTasks(): Promise<Task[]> {
 		if (this.isLoading) {
-			console.warn('[TaskManagerService] Already loading, returning cached data');
 			return this.getAllTasksFromCache();
 		}
 
 		this.isLoading = true;
 		
 		try {
-			// 清空旧缓存
 			this.tasksCache.clear();
 			
-			// 获取有效文件列表
 			const validFiles = this.getValidMarkdownFiles();
 			
-			console.log(`[TaskManagerService] Loading tasks from ${validFiles.length} files...`);
-			
-			// 批量并行处理（每批50个文件）
 			const batchSize = 50;
 			for (let i = 0; i < validFiles.length; i += batchSize) {
 				const batch = validFiles.slice(i, i + batchSize);
 				
-				// 并行解析当前批次
 				const promises = batch.map(async (file) => {
 					try {
 						const tasks = await this.taskParser.parseFile(file);
@@ -79,7 +74,6 @@ export class TaskManagerService {
 				
 				const results = await Promise.all(promises);
 				
-				// 更新缓存
 				for (const result of results) {
 					if (result.success) {
 						this.tasksCache.set(result.filePath, result.tasks);
@@ -87,10 +81,7 @@ export class TaskManagerService {
 				}
 			}
 			
-			const allTasks = this.getAllTasksFromCache();
-			console.log(`[TaskManagerService] Loaded ${allTasks.length} tasks from ${this.tasksCache.size} files`);
-			
-			return allTasks;
+			return this.getAllTasksFromCache();
 		} catch (error) {
 			console.error('[TaskManagerService] Failed to load all tasks:', error);
 			throw error;
@@ -117,16 +108,14 @@ export class TaskManagerService {
 	 */
 	async refreshSingleFile(file: TFile): Promise<void> {
 		try {
-			// 重新解析该文件
 			const tasks = await this.taskParser.parseFile(file);
 			
-			// 更新缓存
 			this.tasksCache.set(file.path, tasks);
 			
-			console.log(`[TaskManagerService] Refreshed cache for ${file.path} (${tasks.length} tasks)`);
+			// ✅ 主动通知所有订阅者：缓存已更新
+			this.trigger('cache-updated', file);
 		} catch (error) {
 			console.error(`[TaskManagerService] Failed to refresh file ${file.path}:`, error);
-			// 失败时移除该文件的缓存
 			this.tasksCache.delete(file.path);
 		}
 	}
@@ -136,10 +125,7 @@ export class TaskManagerService {
 	 * @param filePath 文件路径
 	 */
 	removeFileCache(filePath: string): void {
-		const removed = this.tasksCache.delete(filePath);
-		if (removed) {
-			console.log(`[TaskManagerService] Removed cache for deleted file: ${filePath}`);
-		}
+		this.tasksCache.delete(filePath);
 	}
 
 	/**
@@ -152,7 +138,6 @@ export class TaskManagerService {
 		if (tasks) {
 			this.tasksCache.delete(oldPath);
 			this.tasksCache.set(newPath, tasks);
-			console.log(`[TaskManagerService] Renamed cache: ${oldPath} -> ${newPath}`);
 		}
 	}
 
@@ -161,7 +146,6 @@ export class TaskManagerService {
 	 */
 	clearCache(): void {
 		this.tasksCache.clear();
-		console.log('[TaskManagerService] Cache cleared');
 	}
 
 	/**

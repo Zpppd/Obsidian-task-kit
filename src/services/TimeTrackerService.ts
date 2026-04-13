@@ -173,10 +173,12 @@ export class TimeTrackerService {
 		switch (format) {
 			case 'range':
 				if (task.timeTracking.endTime) {
+					const durationDate = this.formatDuration(task.timeTracking.durationMinutes || 0);
 					return TimeTemplateRenderer.render(
 						this.plugin.settings.timeTracking.completedTemplate,
 						task.timeTracking.startTime,
-						task.timeTracking.endTime
+						task.timeTracking.endTime,
+						durationDate
 					);
 				} else {
 					return TimeTemplateRenderer.render(

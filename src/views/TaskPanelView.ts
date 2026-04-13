@@ -3,6 +3,7 @@ import { mount, unmount } from 'svelte';
 import type { Task } from '../types/task';
 import { TaskParser } from '../parser/TaskParser';
 import { TimeTrackerService } from '../services/TimeTrackerService';
+import { TaskManagerService } from '../services/TaskManagerService';
 import { TaskList } from './components';
 import type TaskMasterProPlugin from '../main';
 
@@ -11,15 +12,22 @@ export const TASK_PANEL_VIEW_TYPE = 'task-master-pro-panel';
 export class TaskPanelView extends ItemView {
   private taskParser: TaskParser;
   private timeTrackerService: TimeTrackerService;
+  private taskManagerService: TaskManagerService;
   private plugin: TaskMasterProPlugin; // ✅ 添加插件实例引用
   private tasks: Task[] = [];
   private svelteComponent: any = null;
-  private refreshTimeout: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(leaf: WorkspaceLeaf, taskParser: TaskParser, timeTrackerService: TimeTrackerService, plugin: TaskMasterProPlugin) {
+  constructor(
+    leaf: WorkspaceLeaf, 
+    taskParser: TaskParser, 
+    timeTrackerService: TimeTrackerService, 
+    taskManagerService: TaskManagerService,
+    plugin: TaskMasterProPlugin
+  ) {
     super(leaf);
     this.taskParser = taskParser;
     this.timeTrackerService = timeTrackerService;
+    this.taskManagerService = taskManagerService;
     this.plugin = plugin;
   }
 
@@ -60,46 +68,6 @@ export class TaskPanelView extends ItemView {
         }
       });
 
-      // 注册文件监听（带防抖）
-      this.registerEvent(
-        this.app.vault.on('modify', (file: TAbstractFile) => {
-          if (file instanceof TFile) {
-            this.handleFileModify(file);
-          }
-        })
-      );
-      
-      this.registerEvent(
-        this.app.vault.on('delete', (file: TAbstractFile) => {
-          if (file instanceof TFile) {
-            // 从任务列表中移除该文件的所有任务
-            const oldCount = this.tasks.length;
-            this.tasks = this.tasks.filter(t => t.file.path !== file.path);
-            const removedCount = oldCount - this.tasks.length;
-            if (removedCount > 0) {
-              this.updateView();
-            }
-          }
-        })
-      );
-      
-      this.registerEvent(
-        this.app.vault.on('rename', (file: TAbstractFile, oldPath: string) => {
-          if (file instanceof TFile) {
-            // 更新该文件所有任务的 file 引用
-            this.tasks.forEach(task => {
-              if (task.file.path === oldPath) {
-                // 注意：TFile 对象是不可变的，我们需要重新解析
-                // 这里简单处理：标记需要刷新
-                setTimeout(() => {
-                  this.refreshSingleFile(file);
-                }, 100);
-              }
-            });
-          }
-        })
-      );
-
       console.log('[TaskPanelView] View opened successfully');
     } catch (error) {
       console.error('[TaskPanelView] Failed to open view:', error);
@@ -113,12 +81,6 @@ export class TaskPanelView extends ItemView {
       unmount(this.svelteComponent);
       this.svelteComponent = null;
     }
-    
-    // 清除防抖定时器
-    if (this.refreshTimeout) {
-      clearTimeout(this.refreshTimeout);
-      this.refreshTimeout = null;
-    }
   }
 
   /**
@@ -126,67 +88,17 @@ export class TaskPanelView extends ItemView {
    */
   async loadTasks(): Promise<void> {
     try {
-      const files = this.app.vault.getMarkdownFiles();
+      // ✅ 直接使用 TaskManagerService
+      const allTasks = await this.taskManagerService.loadAllTasks();
       
-      const allTasks: Task[] = [];
-      let processedFiles = 0;
-      let failedFiles = 0;
-      
-      // ✅ 性能优化：过滤掉不需要处理的文件
-      const validFiles = files.filter(file => !this.shouldSkipFile(file));
-
-      // ✅ 性能优化：批量并行处理（限制并发数避免内存溢出）
-      const batchSize = 50; // 每批处理 50 个文件
-      for (let i = 0; i < validFiles.length; i += batchSize) {
-        const batch = validFiles.slice(i, i + batchSize);
-        const promises = batch.map(async (file) => {
-          try {
-            const tasks = await this.taskParser.parseFile(file);
-            return { file, tasks, success: true };
-          } catch (error) {
-            console.error(`[TaskPanelView] Failed to parse file ${file.path}:`, error);
-            return { file, tasks: [], success: false };
-          }
-        });
-        
-        const results = await Promise.all(promises);
-        
-        for (const result of results) {
-          if (result.success) {
-            allTasks.push(...result.tasks);
-            processedFiles++;
-          } else {
-            failedFiles++;
-          }
-        }
-      }
-
       this.tasks = allTasks;
       this.updateView();
+      
+      console.log(`[TaskPanelView] Loaded ${allTasks.length} tasks`);
     } catch (error) {
       console.error('[TaskPanelView] Failed to load tasks:', error);
-      throw error; // 重新抛出错误，让 onOpen 捕获
+      throw error;
     }
-  }
-
-  /**
-   * 判断是否应该跳过该文件
-   */
-  private shouldSkipFile(file: TFile): boolean {
-    // 跳过隐藏文件
-    if (file.path.startsWith('.')) {
-      return true;
-    }
-    
-    // 跳过系统文件夹
-    const skipFolders = ['.obsidian', '.git', 'node_modules'];
-    for (const folder of skipFolders) {
-      if (file.path.includes(`/${folder}/`) || file.path.startsWith(`${folder}/`)) {
-        return true;
-      }
-    }
-    
-    return false;
   }
 
   /**
@@ -197,45 +109,15 @@ export class TaskPanelView extends ItemView {
   }
 
   /**
-   * 处理文件修改事件（带防抖）
+   * 处理文件修改事件（委托给 TaskManagerService）
    */
   private handleFileModify(file: TFile): void {
-    // 跳过不应该监听的文件
-    if (this.shouldSkipFile(file)) {
-      return;
-    }
-    
-    // 清除之前的定时器
-    if (this.refreshTimeout) {
-      clearTimeout(this.refreshTimeout);
-    }
-
-    // 设置新的防抖定时器（1000ms，给用户更多编辑时间）
-    this.refreshTimeout = setTimeout(async () => {
-      await this.refreshSingleFile(file);  // ✅ 优化：只刷新单个文件
-      this.refreshTimeout = null;
-    }, 1000);
-  }
-
-  /**
-   * 增量更新：只重新解析单个文件
-   */
-  private async refreshSingleFile(changedFile: TFile): Promise<void> {
-    try {
-      // 从当前任务列表中移除该文件的旧任务
-      this.tasks = this.tasks.filter(t => t.file.path !== changedFile.path);
-      
-      // 重新解析该文件
-      const newTasks = await this.taskParser.parseFile(changedFile);
-      this.tasks.push(...newTasks);
-      
-      // 更新视图
+    // TaskManagerService 已经内部处理了文件监听和缓存更新
+    // 这里只需要从缓存重新加载并更新视图
+    setTimeout(async () => {
+      this.tasks = this.taskManagerService.getAllTasksFromCache();
       this.updateView();
-    } catch (error) {
-      console.error('[TaskPanelView] Failed to refresh single file:', error);
-      // 如果增量更新失败，回退到全量刷新
-      await this.refreshTasks();
-    }
+    }, 100);
   }
 
   /**

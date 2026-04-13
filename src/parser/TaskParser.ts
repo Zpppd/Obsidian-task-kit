@@ -194,16 +194,35 @@ export class TaskParser {
 	 * 判断是否应该跳过该文件
 	 * @param file 文件对象
 	 */
-	private shouldSkipFile(file: TFile): boolean {
-		// 跳过隐藏文件
+	public shouldSkipFile(file: TFile): boolean {
+		// 1. 跳过隐藏文件
 		if (file.name.startsWith('.')) {
 			return true;
 		}
 
-		// 跳过特定文件夹
+		// 2. 跳过系统文件夹
 		const skipFolders = ['.obsidian', '.git', 'node_modules'];
 		for (const folder of skipFolders) {
-			if (file.path.startsWith(`${folder}/`)) {
+			if (file.path.startsWith(`${folder}/`) || file.path.includes(`/${folder}/`)) {
+				return true;
+			}
+		}
+
+		// 3. 白名单检查（如果配置了白名单）
+		const settings = this.getSettings();
+		if (settings.scanDirectories.length > 0) {
+			const isInWhitelist = settings.scanDirectories.some(dir => {
+				// 标准化路径分隔符
+				const normalizedDir = dir.replace(/\\/g, '/').replace(/\/$/, '');
+				const normalizedPath = file.path.replace(/\\/g, '/');
+				
+				// 检查文件是否在白名单目录或其子目录中
+				return normalizedPath.startsWith(normalizedDir + '/') || 
+				       normalizedPath === normalizedDir;
+			});
+			
+			// 如果不在白名单中，则跳过
+			if (!isInWhitelist) {
 				return true;
 			}
 		}

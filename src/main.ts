@@ -2,6 +2,7 @@ import { Plugin, MarkdownView, Notice } from 'obsidian';
 import moment from 'moment';
 import { TaskParser } from './parser/TaskParser';
 import { TimeTrackerService } from './services/TimeTrackerService';
+import { TaskManagerService } from './services/TaskManagerService';
 import { TaskPanelView, TASK_PANEL_VIEW_TYPE } from './views/TaskPanelView';
 import type { Task } from './types/task';
 import { DEFAULT_SETTINGS, type PluginSettings } from './types/settings';
@@ -11,6 +12,7 @@ import { TimeTrackingSettingsTab } from './settings/TimeTrackingSettingsTab';
 export default class TaskMasterProPlugin extends Plugin {
 	private taskParser!: TaskParser;
 	private timeTrackerService!: TimeTrackerService;
+	private taskManagerService!: TaskManagerService;
 	
 	// ✅ 插件设置
 	settings: PluginSettings = DEFAULT_SETTINGS;
@@ -27,13 +29,20 @@ export default class TaskMasterProPlugin extends Plugin {
 		// 初始化时间追踪服务（传入插件实例以访问设置）
 		this.timeTrackerService = new TimeTrackerService(this.app, this.taskParser, this);
 		
+		// ✅ 初始化任务管理服务
+		this.taskManagerService = new TaskManagerService(
+			this.app,
+			this.taskParser,
+			() => this.settings
+		);
+		
 		// ✅ 使用 DOM 事件监听方案拦截编辑器中的 checkbox 点击
 		this.registerEditorCheckboxInterceptor();
 		
 		// 注册任务面板视图
 		this.registerView(
 			TASK_PANEL_VIEW_TYPE,
-			(leaf) => new TaskPanelView(leaf, this.taskParser, this.timeTrackerService, this)
+			(leaf) => new TaskPanelView(leaf, this.taskParser, this.timeTrackerService, this.taskManagerService, this)
 		);
 		
 		// ✅ 注册设置 Tab

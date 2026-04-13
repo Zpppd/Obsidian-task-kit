@@ -87,7 +87,7 @@ main.ts (插件入口)
 ### **陷阱1：在视图层实现业务逻辑**
 
 **错误示例** ❌：
-```typescript
+```
 // TaskPanelView.ts
 private shouldSkipFile(file: TFile): boolean {
   // 实现了与 TaskParser 相同的逻辑
@@ -97,7 +97,7 @@ private shouldSkipFile(file: TFile): boolean {
 ```
 
 **正确做法** ✅：
-```typescript
+```
 // TaskPanelView.ts
 async loadTasks(): Promise<void> {
   const validFiles = files.filter(file => !this.taskParser.shouldSkipFile(file));
@@ -112,12 +112,12 @@ async loadTasks(): Promise<void> {
 ### **陷阱2：硬编码配置**
 
 **错误示例** ❌：
-```typescript
+```
 const skipFolders = ['.obsidian', '.git', 'node_modules'];
 ```
 
 **正确做法** ✅：
-```typescript
+```
 const settings = this.getSettings();
 if (settings.scanDirectories.length > 0) {
   // 使用配置
@@ -131,7 +131,7 @@ if (settings.scanDirectories.length > 0) {
 ### **陷阱3：忽视缓存和性能**
 
 **错误示例** ❌：
-```typescript
+```
 // 每次都重新解析所有文件
 async filterTasks() {
   const allTasks = await this.parseAllFiles();
@@ -140,7 +140,7 @@ async filterTasks() {
 ```
 
 **正确做法** ✅：
-```typescript
+```
 // 使用缓存
 async filterTasks() {
   const allTasks = this.taskManagerService.getAllTasksFromCache();
@@ -220,7 +220,7 @@ async filterTasks() {
 
 当做出重要架构决策时，使用以下模板：
 
-```markdown
+```
 # ADR-XXX: [决策标题]
 
 ## 状态
@@ -248,12 +248,129 @@ async filterTasks() {
 
 ---
 
+## 🚀 新对话快速上手指南
+
+### **标准提示词模板**
+
+在新开对话时，使用以下模板让AI快速了解项目：
+
+```
+# 项目背景
+我正在开发 "Task Master Pro" - 一个 Obsidian 任务管理插件。
+
+# 技术栈
+- TypeScript + Svelte 4+ + Vite
+- Obsidian Plugin API
+
+# 当前架构（三层设计）
+```
+视图层 (Views)
+  └─ TaskPanelView.ts (纯UI渲染)
+
+服务层 (Services) ⭐核心层
+  ├─ TaskManagerService.ts (统一数据管理、缓存、增量更新)
+  └─ TimeTrackerService.ts (时间追踪、三态切换)
+
+工具层 (Utils)
+  ├─ TaskParser.ts (纯解析器，shouldSkipFile已改为public)
+  ├─ ReminderParser.ts
+  └─ TimeTrackerParser.ts
+```
+
+# 刚完成的工作
+- ✅ 引入 TaskManagerService，消除代码重复
+- ✅ TaskPanelView 简化为纯视图层（减少~100行）
+- ✅ 文件监听集中到服务层
+
+# 开发规范（必须遵守）
+1. **Git操作**：严禁自动执行 git commit/push
+2. **复杂任务**：先分析→列计划→等确认→再执行
+3. **架构原则**：
+   - 视图层只负责UI，业务逻辑在服务层
+   - 工具层只做纯函数式解析
+   - 禁止在视图层实现 shouldSkipFile 等业务逻辑
+4. **Svelte规范**：
+   - 使用 mount/unmount API
+   - 通过 Props 注入服务（如 TimeTrackerService）
+   - 样式注释用 /* */，禁止 //
+5. **类型安全**：访问嵌套属性前做空值检查
+
+# 当前需求
+[在这里描述你的具体需求]
+
+# 参考资料
+- docs/AI_CONTEXT.md（本文档）
+- docs/FUNCTIONAL_SPECIFICATION.md（功能需求）
+```
+
+---
+
+### **关键记忆点**
+
+AI需要记住的核心概念：
+
+1. **TaskManagerService 是数据唯一入口**
+   ```typescript
+   // ✅ 正确
+   const tasks = await this.taskManagerService.loadAllTasks();
+   
+   // ❌ 错误
+   const files = this.app.vault.getMarkdownFiles();
+   const tasks = await Promise.all(files.map(f => this.taskParser.parseFile(f)));
+   ```
+
+2. **TaskParser.shouldSkipFile() 是公共方法**
+   ```typescript
+   // ✅ 正确
+   if (this.taskParser.shouldSkipFile(file)) return;
+   
+   // ❌ 错误：不要自己实现过滤逻辑
+   if (file.name.startsWith('.')) return;
+   ```
+
+3. **Svelte组件必须通过Props注入服务**
+   ```typescript
+   // ✅ 正确
+   mount(TaskList, {
+     props: { timeTrackerService: this.timeTrackerService }
+   });
+   
+   // ❌ 错误：不要在组件内硬编码
+   const service = new TimeTrackerService(...);
+   ```
+
+4. **文件监听已在 TaskManagerService 内部处理**
+   ```typescript
+   // ✅ 正确：视图层无需关心
+   this.tasks = this.taskManagerService.getAllTasksFromCache();
+   
+   // ❌ 错误：不要重新注册监听器
+   this.app.vault.on('modify', ...);
+   ```
+
+---
+
+### **常见问题速查**
+
+| 问题 | 解决方案 |
+|------|---------|
+| 如何获取所有任务？ | `taskManagerService.loadAllTasks()` |
+| 如何按状态筛选？ | 从缓存获取后在前端过滤（Phase 2会提供API） |
+| 如何实现看板视图？ | 创建新 View，调用 `taskManagerService.getAllTasksFromCache()` |
+| 文件修改后如何同步？ | TaskManagerService 自动监听并更新缓存 |
+| 如何避免代码重复？ | 检查 TaskParser 和 TaskManagerService 是否已有类似方法 |
+
+---
+
 ## 🔗 相关文档
 
-- [功能规格说明书](./FUNCTIONAL_SPECIFICATION.md)
-- [实现优先级](./IMPLEMENTATION_PRIORITY.md)
-- [开发进度记录](./DEV_PROGRESS.md)
-- [架构升级方案](./ARCHITECTURE_UPGRADE_PLAN.md)
+### **核心文档（当前有效）**
+- [功能规格说明书](./FUNCTIONAL_SPECIFICATION.md) - 完整的功能需求定义
+- [实现优先级](./IMPLEMENTATION_PRIORITY.md) - 开发路线图和优先级
+- [架构升级方案](./ARCHITECTURE_UPGRADE_PLAN.md) - TaskManagerService架构设计
+
+### **历史归档**
+- [归档目录](./archive/README.md) - Bug修复记录、实现报告等历史文档（仅供参考）
 
 ---
 

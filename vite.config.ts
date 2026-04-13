@@ -16,8 +16,20 @@ export default defineConfig({
           console.log('✓ Copied manifest.json to dist/')
         }
         
-        // ✅ 复制 styles.css 到 dist 目录（Obsidian 会自动加载）
-        if (fs.existsSync('styles.css')) {
+        // ✅ 重命名 Vite 生成的 CSS 文件为标准名称（Obsidian 要求 styles.css）
+        const generatedCssFile = resolve(__dirname, 'dist', 'task-master-pro.css')
+        const standardCssFile = resolve(__dirname, 'dist', 'styles.css')
+        if (fs.existsSync(generatedCssFile)) {
+          // 如果已存在 styles.css（从根目录复制的），先删除
+          if (fs.existsSync(standardCssFile)) {
+            fs.unlinkSync(standardCssFile)
+            console.log('✓ Removed existing styles.css from root copy')
+          }
+          // 重命名生成的 CSS 文件
+          fs.renameSync(generatedCssFile, standardCssFile)
+          console.log('✓ Renamed task-master-pro.css to styles.css')
+        } else if (fs.existsSync('styles.css')) {
+          // 如果没有生成 CSS 文件，但根目录有 styles.css，则复制
           fs.copyFileSync('styles.css', 'dist/styles.css')
           console.log('✓ Copied styles.css to dist/')
         }

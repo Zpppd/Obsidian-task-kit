@@ -102,3 +102,12 @@ Task Master Pro 插件全局样式
   color: #e74c3c;
   min-height: 20px;
 }
+
+/* ========================================
+   任务面板视图布局优化
+   ======================================== */
+
+/* 移除任务面板的默认内边距 */
+.workspace-leaf-content[data-type='task-master-pro-panel'] .view-content {
+  padding: 0 !important;
+}

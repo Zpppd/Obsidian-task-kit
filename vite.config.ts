@@ -16,22 +16,35 @@ export default defineConfig({
           console.log('✓ Copied manifest.json to dist/')
         }
         
-        // ✅ 重命名 Vite 生成的 CSS 文件为标准名称（Obsidian 要求 styles.css）
+        // ✅ 合并 Vite 生成的 CSS 和根目录 styles.css
         const generatedCssFile = resolve(__dirname, 'dist', 'task-master-pro.css')
-        const standardCssFile = resolve(__dirname, 'dist', 'styles.css')
+        const rootStylesFile = resolve(__dirname, 'styles.css')
+        const finalCssFile = resolve(__dirname, 'dist', 'styles.css')
+        
+        let finalCssContent = ''
+        
+        // 1. 读取 Vite 生成的 CSS（Svelte 组件样式）
         if (fs.existsSync(generatedCssFile)) {
-          // 如果已存在 styles.css（从根目录复制的），先删除
-          if (fs.existsSync(standardCssFile)) {
-            fs.unlinkSync(standardCssFile)
-            console.log('✓ Removed existing styles.css from root copy')
+          finalCssContent += fs.readFileSync(generatedCssFile, 'utf-8')
+          fs.unlinkSync(generatedCssFile)
+          console.log('✓ Read generated CSS from Svelte components')
+        }
+        
+        // 2. 追加根目录 styles.css 的内容（自定义样式）
+        if (fs.existsSync(rootStylesFile)) {
+          const rootStyles = fs.readFileSync(rootStylesFile, 'utf-8')
+          if (rootStyles.trim()) {
+            finalCssContent += '\n\n/* Custom styles from root styles.css */\n' + rootStyles
+            console.log('✓ Appended custom styles from root styles.css')
           }
-          // 重命名生成的 CSS 文件
-          fs.renameSync(generatedCssFile, standardCssFile)
-          console.log('✓ Renamed task-master-pro.css to styles.css')
-        } else if (fs.existsSync('styles.css')) {
-          // 如果没有生成 CSS 文件，但根目录有 styles.css，则复制
-          fs.copyFileSync('styles.css', 'dist/styles.css')
-          console.log('✓ Copied styles.css to dist/')
+        }
+        
+        // 3. 写入最终的 styles.css
+        if (finalCssContent) {
+          fs.writeFileSync(finalCssFile, finalCssContent)
+          console.log('✓ Generated final styles.css')
+        } else {
+          console.warn('⚠ No CSS content found to write')
         }
       }
     }

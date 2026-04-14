@@ -49,7 +49,7 @@ export class TaskPanelView extends ItemView {
   }
 
   getIcon(): string {
-    return 'checklist';
+    return 'list-todo';
   }
 
   async onOpen(): Promise<void> {

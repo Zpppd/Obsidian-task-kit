@@ -39,6 +39,11 @@ export default class TaskMasterProPlugin extends Plugin {
 		
 		this.addSettingTab(new TimeTrackingSettingsTab(this.app, this));
 		
+		// ✅ 新增：在 Ribbon 左侧工具栏添加图标按钮
+		this.addRibbonIcon('list-todo', 'Open Task Panel', () => {
+			this.openTaskPanel();
+		});
+		
 		this.addCommand({
 			id: 'open-task-panel',
 			name: 'Open Task Panel',
@@ -69,6 +74,11 @@ export default class TaskMasterProPlugin extends Plugin {
 			callback: async () => {
 				await this.testTimeTracker();
 			}
+		});
+		
+		// ✅ 新增：在布局就绪后自动打开任务面板
+		this.app.workspace.onLayoutReady(() => {
+			this.openTaskPanel();
 		});
 	}
 

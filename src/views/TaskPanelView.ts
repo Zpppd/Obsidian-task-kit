@@ -13,9 +13,18 @@ export class TaskPanelView extends ItemView {
   private taskParser: TaskParser;
   private timeTrackerService: TimeTrackerService;
   private taskManagerService: TaskManagerService;
-  private plugin: TaskMasterProPlugin; // ✅ 添加插件实例引用
+  private plugin: TaskMasterProPlugin;
   private tasks: Task[] = [];
   private svelteComponent: any = null;
+  
+  // ✅ 新增：保存用户的筛选状态（避免组件重建时丢失）
+  private filterState: {
+    searchText: string;
+    statusFilter: 'all' | 'pending' | 'progress' | 'completed';
+  } = {
+    searchText: '',
+    statusFilter: 'all'
+  };
 
   constructor(
     leaf: WorkspaceLeaf, 
@@ -64,7 +73,10 @@ export class TaskPanelView extends ItemView {
           onToggle: this.handleTaskToggle.bind(this),
           onClick: this.handleTaskClick.bind(this),
           onFilterChange: this.handleFilterChange.bind(this),
-          timeTrackerService: this.timeTrackerService
+          timeTrackerService: this.timeTrackerService,
+          // ✅ 传递初始筛选状态
+          initialSearchText: this.filterState.searchText,
+          initialStatusFilter: this.filterState.statusFilter
         }
       });
 
@@ -108,6 +120,7 @@ export class TaskPanelView extends ItemView {
     this.plugin.registerEvent(
       this.taskManagerService.on('cache-updated', (...args: unknown[]) => {
         const file = args[0] as TFile;
+        
         setTimeout(() => {
           try {
             const newTasks = this.taskManagerService.getAllTasksFromCache();
@@ -170,7 +183,7 @@ export class TaskPanelView extends ItemView {
       const allTasks = await this.taskManagerService.loadAllTasks();
       
       this.tasks = allTasks;
-      this.updateView();
+      // 注意：不在这里调用 updateView()，由调用方决定何时更新视图
     } catch (error) {
       console.error('[TaskPanelView] Failed to load tasks:', error);
       throw error;
@@ -182,6 +195,7 @@ export class TaskPanelView extends ItemView {
    */
   async refreshTasks(): Promise<void> {
     await this.loadTasks();
+    this.updateView();
   }
 
   /**
@@ -206,7 +220,7 @@ export class TaskPanelView extends ItemView {
       return true;
     }
     
-    // 数量相同，检查是否有任务的 ID 或状态变化
+    // 数量相同，检查是否有任务的 ID、状态或内容变化
     const oldTaskIds = new Set(this.tasks.map(t => t.id));
     const newTaskIds = new Set(newTasks.map(t => t.id));
     
@@ -221,10 +235,20 @@ export class TaskPanelView extends ItemView {
       }
     }
     
-    // 检查每个任务的状态是否变化
+    // 检查每个任务的状态和内容是否变化
     for (const newTask of newTasks) {
       const oldTask = this.tasks.find(t => t.id === newTask.id);
-      if (!oldTask || oldTask.status !== newTask.status) {
+      if (!oldTask) {
+        return true;
+      }
+      // ✅ 检查状态、内容、时间追踪等关键字段
+      if (oldTask.status !== newTask.status) {
+        return true;
+      }
+      if (oldTask.content !== newTask.content) {
+        return true;
+      }
+      if (JSON.stringify(oldTask.timeTracking) !== JSON.stringify(newTask.timeTracking)) {
         return true;
       }
     }
@@ -255,6 +279,7 @@ export class TaskPanelView extends ItemView {
       
       // 刷新任务列表以显示最新状态
       await this.refreshTasks();
+      
     } catch (error) {
       console.error('[TaskPanelView] Failed to toggle task:', error);
       new Notice('切换任务状态失败，请查看控制台');
@@ -318,26 +343,38 @@ export class TaskPanelView extends ItemView {
 
   /**
    * 处理筛选条件变化
+   * ✅ 保存用户的筛选状态到父组件，避免组件重建时丢失
    */
   handleFilterChange(filterType: string, value: any): void {
-    // 筛选逻辑在 Svelte 组件内部处理
-    // 这里可以添加额外的处理逻辑（如统计、日志等）
+    // ✅ 保存筛选状态到父组件
+    if (filterType === 'search') {
+      this.filterState.searchText = value;
+    } else if (filterType === 'status') {
+      this.filterState.statusFilter = value;
+    }
   }
 
   /**
    * 更新视图（重新渲染 Svelte 组件）
+   * ✅ 修复：移除svelteComponent不存在时return的逻辑
+   * ✅ 优化：传递筛选状态，避免组件重建时丢失用户选择
    */
   private updateView(): void {
-    if (!this.svelteComponent || !this.containerEl.children[1]) {
+    const container = this.containerEl.children[1];
+    if (!container) {
+      console.warn('[TaskPanelView] Container not found, skipping update');
       return;
     }
 
     try {
-      // ✅ Svelte 4+ mount API 不支持动态更新 props
-      // 解决方案：卸载旧组件，重新挂载新组件
-      unmount(this.svelteComponent);
+      // 如果组件已存在，先卸载
+      if (this.svelteComponent) {
+        unmount(this.svelteComponent);
+        this.svelteComponent = null;
+      }
       
-      const container = this.containerEl.children[1];
+      // ✅ 总是重新挂载组件（无论之前是否存在）
+      // ✅ 传递筛选状态（组件重建时恢复用户选择）
       this.svelteComponent = mount(TaskList, {
         target: container as HTMLElement,
         props: {
@@ -345,7 +382,10 @@ export class TaskPanelView extends ItemView {
           onToggle: this.handleTaskToggle.bind(this),
           onClick: this.handleTaskClick.bind(this),
           onFilterChange: this.handleFilterChange.bind(this),
-          timeTrackerService: this.timeTrackerService // ✅ 添加 timeTrackerService
+          timeTrackerService: this.timeTrackerService,
+          // ✅ 传递筛选状态
+          initialSearchText: this.filterState.searchText,
+          initialStatusFilter: this.filterState.statusFilter
         }
       });
     } catch (error) {

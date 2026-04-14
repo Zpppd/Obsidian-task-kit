@@ -8,11 +8,20 @@
   export let onToggle: (task: Task) => void;
   export let onClick: (task: Task) => void;
   export let onFilterChange: (filterType: string, value: any) => void;
-  export let timeTrackerService: TimeTrackerService; // ✅ 添加 TimeTrackerService prop
+  export let timeTrackerService: TimeTrackerService;
+  
+  // ✅ 支持从父组件传入初始筛选状态
+  export let initialSearchText: string = '';
+  export let initialStatusFilter: 'all' | 'pending' | 'progress' | 'completed' = 'all';
 
-  // 筛选状态
-  let searchText = '';
-  let statusFilter: 'all' | 'pending' | 'progress' | 'completed' = 'all';
+  // 筛选状态 - 使用父组件传入的初始值
+  let searchText = initialSearchText;
+  let statusFilter: 'all' | 'pending' | 'progress' | 'completed' = initialStatusFilter;
+  
+  // ✅ 声明filteredTasks变量
+  let filteredTasks: Task[] = [];
+  // ✅ 声明groupedTasks变量
+  let groupedTasks: Map<string, Task[]> = new Map();
 
   // 处理筛选变化
   function handleFilterChange(event: CustomEvent) {
@@ -29,28 +38,34 @@
   }
 
   // 计算筛选后的任务
-  $: filteredTasks = tasks.filter(task => {
-    // 状态筛选
-    if (statusFilter !== 'all') {
-      if (statusFilter === 'pending' && task.status !== 'pending') return false;
-      if (statusFilter === 'progress' && task.status !== 'progress') return false;
-      if (statusFilter === 'completed' && task.status !== 'completed') return false;
-    }
-    
-    // 搜索筛选
-    if (searchText.trim()) {
-      const searchLower = searchText.toLowerCase();
-      const contentMatch = task.content.toLowerCase().includes(searchLower);
-      const tagsMatch = task.tags?.some(tag => tag.toLowerCase().includes(searchLower));
+  $: {
+    filteredTasks = tasks.filter(task => {
+      // 状态筛选
+      if (statusFilter !== 'all') {
+        if (statusFilter === 'pending' && task.status !== 'pending') return false;
+        if (statusFilter === 'progress' && task.status !== 'progress') return false;
+        if (statusFilter === 'completed' && task.status !== 'completed') return false;
+      }
       
-      if (!contentMatch && !tagsMatch) return false;
-    }
+      // 搜索筛选
+      if (searchText.trim()) {
+        const searchLower = searchText.toLowerCase();
+        const contentMatch = task.content.toLowerCase().includes(searchLower);
+        const tagsMatch = task.tags?.some(tag => tag.toLowerCase().includes(searchLower));
+        
+        if (!contentMatch && !tagsMatch) return false;
+      }
+      
+      return true;
+    });
     
-    return true;
-  });
+    console.log('[TaskList] ✅ Filtered tasks count:', filteredTasks.length);
+  }
 
   // 按文件分组
-  $: groupedTasks = groupByFile(filteredTasks);
+  $: {
+    groupedTasks = groupByFile(filteredTasks);
+  }
 
   function groupByFile(tasks: Task[]): Map<string, Task[]> {
     const groups = new Map<string, Task[]>();
@@ -126,6 +141,7 @@
     flex: 1;
     overflow-y: auto;
     padding: 8px;
+    position: relative; /* 确保子元素的定位相对于此容器 */
   }
 
   .empty-state {
@@ -133,7 +149,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    height: 100%;
+    min-height: 200px; /* 改为最小高度，而不是100%，防止覆盖FilterBar */
     color: var(--text-muted);
     gap: 12px;
   }

@@ -1,0 +1,149 @@
+/*
+ * Task Master Pro - 进行中任务样式增强
+ * 
+ * 使用说明：
+ * 1. 将此文件复制到 Obsidian 仓库的 .obsidian/snippets/ 目录
+ * 2. 打开 Obsidian 设置 → 外观 → CSS 代码片段
+ * 3. 找到 "task-master-pro-in-progress" 并启用它
+ * 4. 刷新页面即可看到效果
+ * 
+ * 此样式同时适用于：
+ * - Task Master Pro 任务面板中的 checkbox
+ * - Markdown 编辑器中的任务列表（编辑模式）
+ * - 阅读模式下的任务预览
+ */
+
+/* ========================================
+   进行中任务的 Checkbox 样式
+   参考 obsidian-things 主题实现
+   使用半填充效果，视觉上表示"进行中"状态
+   ======================================== */
+
+/* --- 任务面板中的进行中样式 --- */
+/* 注意：任务面板中的进行中checkbox没有checked属性，所以不使用:checked */
+.task-checkbox-input.checkbox-progress {
+  background-image: none !important;
+  background-color: transparent !important;
+  position: relative !important;
+  overflow: hidden !important;
+  accent-color: transparent !important;
+  border: 2px solid var(--interactive-accent) !important;
+  border-radius: var(--checkbox-radius, 30%) !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  width: 16px !important;
+  height: 16px !important;
+}
+
+.task-checkbox-input.checkbox-progress:after {
+  top: 0 !important;
+  left: 0 !important;
+  content: ' ' !important;
+  display: block !important;
+  position: absolute !important;
+  background-color: var(--interactive-accent) !important;
+  width: calc(50% - 0.5px) !important;
+  height: 100% !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+
+/* --- Markdown 编辑器中的进行中样式（CodeMirror 6）--- */
+/* 基于实际 DOM 结构：input.task-list-item-checkbox[data-task='/'] */
+/* 注意：编辑器中的checkbox有checked属性 */
+
+/* 方法1：直接使用 data-task 属性选择器（不依赖 :checked） */
+input.task-list-item-checkbox[data-task='/'] {
+  background-image: none !important;
+  background-color: transparent !important;
+  position: relative !important;
+  overflow: hidden !important;
+  accent-color: transparent !important;
+  border: 2px solid var(--interactive-accent) !important;
+  border-radius: var(--checkbox-radius, 30%) !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+}
+
+input.task-list-item-checkbox[data-task='/']:after {
+  top: 0 !important;
+  left: 0 !important;
+  content: ' ' !important;
+  display: block !important;
+  position: absolute !important;
+  background-color: var(--interactive-accent) !important;
+  width: calc(50% - 0.5px) !important;
+  height: 100% !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+
+/* 方法2：备用选择器 - 通过父级 label */
+label.task-list-label:has(input[data-task='/']) input.task-list-item-checkbox {
+  background-image: none !important;
+  background-color: transparent !important;
+  position: relative !important;
+  overflow: hidden !important;
+  accent-color: transparent !important;
+  border: 2px solid var(--interactive-accent) !important;
+  border-radius: var(--checkbox-radius, 30%) !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+}
+
+label.task-list-label:has(input[data-task='/']) input.task-list-item-checkbox:after {
+  top: 0 !important;
+  left: 0 !important;
+  content: ' ' !important;
+  display: block !important;
+  position: absolute !important;
+  background-color: var(--interactive-accent) !important;
+  width: calc(50% - 0.5px) !important;
+  height: 100% !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+
+/* --- 阅读模式中的进行中样式 --- */
+.markdown-preview-view ul > li.task-list-item[data-task='/'] > input[type='checkbox'],
+.markdown-preview-view .task-list-item-checkbox[data-task='/'] {
+  background-image: none !important;
+  background-color: transparent !important;
+  position: relative !important;
+  overflow: hidden !important;
+  accent-color: transparent !important;
+  border: 2px solid var(--interactive-accent) !important;
+  border-radius: var(--checkbox-radius, 30%) !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+}
+
+.markdown-preview-view ul > li.task-list-item[data-task='/'] > input[type='checkbox']:after,
+.markdown-preview-view .task-list-item-checkbox[data-task='/']:after {
+  top: 0 !important;
+  left: 0 !important;
+  content: ' ' !important;
+  display: block !important;
+  position: absolute !important;
+  background-color: var(--interactive-accent) !important;
+  width: calc(50% - 0.5px) !important;
+  height: 100% !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+
+/* --- 可选：为进行中的任务文本添加视觉提示 --- */
+.markdown-source-view.mod-cm6 .HyperMD-task-line[data-task='/'],
+.markdown-preview-view ul > li.task-list-item[data-task='/'] {
+  color: var(--text-normal);
+  font-weight: 500;
+}
+
+/* --- 悬停效果增强 --- */
+.task-checkbox-input.checkbox-progress:hover,
+input.task-list-item-checkbox[data-task='/']:hover,
+label.task-list-label:has(input[data-task='/']) input.task-list-item-checkbox:hover,
+.markdown-preview-view ul > li.task-list-item[data-task='/'] > input[type='checkbox']:hover {
+  border-color: var(--interactive-accent-hover, var(--interactive-accent)) !important;
+  box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb, 0, 122, 255), 0.2);
+}

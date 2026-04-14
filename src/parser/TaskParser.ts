@@ -321,10 +321,10 @@ export class TaskParser {
 			content += ` (@${timeStr})`;
 		}
 
-		// ✅ 添加时间追踪标记（如果存在）
-		if (task.timeTracking) {
+		// ✅ 只有启用时间追踪功能时，才添加/更新时间追踪标记
+		if (this.getSettings().enableTimeTracking && task.timeTracking) {
 			const settings = this.getSettings();
-			if (task.timeTracking.endTime && task.timeTracking.durationMinutes !== undefined) {
+			if (task.timeTracking.endTime && task.timeTracking.durationMinutes !== undefined && task.timeTracking.startTime) {
 				// 已完成状态：使用 completedTemplate
 				const durationDate = this.formatDuration(task.timeTracking.durationMinutes);
 				const timeMarker = TimeTemplateRenderer.render(

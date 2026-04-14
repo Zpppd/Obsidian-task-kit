@@ -13,6 +13,9 @@ export interface TimeTrackingSettings {
  * 插件完整设置
  */
 export interface PluginSettings {
+  /** 是否启用时间追踪功能 */
+  enableTimeTracking: boolean;
+  
   /** 时间追踪设置 */
   timeTracking: TimeTrackingSettings;
   
@@ -24,6 +27,8 @@ export interface PluginSettings {
  * 默认设置
  */
 export const DEFAULT_SETTINGS: PluginSettings = {
+  enableTimeTracking: true, // ✅ 默认开启，保持原有行为
+  
   timeTracking: {
     progressTemplate: '(:{start})',
     completedTemplate: '(:{start} - {end})'

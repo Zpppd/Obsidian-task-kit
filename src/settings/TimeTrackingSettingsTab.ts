@@ -15,10 +15,36 @@ export class TimeTrackingSettingsTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
-		containerEl.createEl('h2', { text: '时间追踪格式设置' });
+		// ✅ 新增：时间追踪功能总开关
+		new Setting(containerEl)
+			.setName('启用时间追踪与三态流转')
+			.setDesc('开启后，任务 Checkbox 将支持 待办/进行中/已完成 三态切换，并自动记录时间')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.enableTimeTracking)
+				.onChange(async (value) => {
+					this.plugin.settings.enableTimeTracking = value;
+					await this.plugin.saveSettings();
+					this.display(); // 重新渲染以显示/隐藏格式配置
+				})
+			);
 
-		this.createTemplateHelp(containerEl);
+		// ✅ 只有开启功能时才显示格式配置
+		if (this.plugin.settings.enableTimeTracking) {
+			containerEl.createEl('h2', { text: '时间追踪格式设置' });
+			this.createTemplateHelp(containerEl);
+			this.createTimeTrackingFormatSettings(containerEl);
+		}
 
+		// ===== 任务扫描目录设置（始终显示） =====
+		containerEl.createEl('h2', { text: '任务扫描设置' });
+		
+		this.createScanDirectoriesSetting(containerEl);
+	}
+
+	/**
+	 * 提取原有的格式配置逻辑
+	 */
+	private createTimeTrackingFormatSettings(containerEl: HTMLElement): void {
 		// 进行中状态模板
 		const progressErrorEl = containerEl.createDiv({ cls: 'setting-error' });
 		const progressWarningEl = containerEl.createDiv({ cls: 'setting-warning' });
@@ -142,11 +168,6 @@ export class TimeTrackingSettingsTab extends PluginSettingTab {
 					this.display();
 				})
 			);
-
-		// ===== 新增：任务扫描目录设置 =====
-		containerEl.createEl('h2', { text: '任务扫描设置' });
-		
-		this.createScanDirectoriesSetting(containerEl);
 	}
 
 	/**

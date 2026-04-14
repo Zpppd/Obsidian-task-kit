@@ -25,6 +25,12 @@ export class TimeTrackerService {
 	 * 切换任务状态（主入口）
 	 */
 	async toggleTaskStatus(task: Task): Promise<void> {
+		// ✅ 检查功能是否启用
+		if (!this.plugin.settings.enableTimeTracking) {
+			console.log('[TimeTrackerService] Time tracking is disabled, skipping status toggle logic.');
+			return;
+		}
+
 		try {
 			switch (task.status) {
 				case TaskStatus.Pending:

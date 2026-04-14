@@ -125,6 +125,12 @@ export default class TaskMasterProPlugin extends Plugin {
 			
 			// ✅ 在 contentEl 上添加点击事件监听（使用捕获阶段）
 			const handleClick = async (event: MouseEvent) => {
+				// ✅ 检查功能是否启用。如果未启用，则不执行任何自定义逻辑，
+				// 也不调用 preventDefault()，让 Obsidian 原生处理 checkbox 切换。
+				if (!this.settings.enableTimeTracking) {
+					return;
+				}
+
 				const target = event.target as HTMLElement;
 				
 				// 检查是否点击了 checkbox

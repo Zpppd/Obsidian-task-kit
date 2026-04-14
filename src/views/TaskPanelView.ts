@@ -86,53 +86,37 @@ export class TaskPanelView extends ItemView {
   }
 
   /**
-   * 注册文件监听器（实现实时更新）
+   * 注册文件监听器（已废弃）
+   * @deprecated 此方法已被 registerEventSubscription 替代，不应再使用
+   * 违反架构规范：View层不应直接监听底层文件系统事件
    */
   private registerFileListener(): void {
-    // 监听文件修改事件
-    this.plugin.registerEvent(
-      this.app.vault.on('modify', (file: TAbstractFile) => {
-        if (file instanceof TFile && !this.taskParser.shouldSkipFile(file)) {
-          this.handleFileModify(file);
-        }
-      })
-    );
-
-    // 监听文件删除事件
-    this.plugin.registerEvent(
-      this.app.vault.on('delete', (file: TAbstractFile) => {
-        if (file instanceof TFile) {
-          setTimeout(async () => {
-            await this.refreshTasks();
-          }, 1500); // ✅ 增加延迟，确保缓存清理完成
-        }
-      })
-    );
-
-    // 监听文件重命名事件
-    this.plugin.registerEvent(
-      this.app.vault.on('rename', (file: TAbstractFile, oldPath: string) => {
-        if (file instanceof TFile) {
-          setTimeout(async () => {
-            await this.refreshTasks();
-          }, 1500); // ✅ 增加延迟，确保缓存迁移完成
-        }
-      })
-    );
+    // 此方法不再使用，保留仅为向后兼容
+    // 实际逻辑已迁移到 registerEventSubscription 中
   }
 
   /**
    * 订阅 TaskManagerService 的缓存更新事件
    * ✅ 符合架构规范：View层不直接监听底层文件系统事件
+   * 
+   * 架构说明：
+   * - 文件修改：由 TaskManagerService 监听 → 更新缓存 → 触发 'cache-updated' 事件 → View层响应
+   * - 文件删除/重命名：由 TaskManagerService 监听并清理缓存 → View层需要重新从缓存加载
    */
   private registerEventSubscription(): void {
+    // ✅ 订阅 TaskManagerService 的缓存更新事件（文件修改时触发）
     this.plugin.registerEvent(
-      this.taskManagerService.on('cache-updated', (file: TFile) => {
-        // 从缓存获取最新数据并更新视图
+      this.taskManagerService.on('cache-updated', (...args: unknown[]) => {
+        const file = args[0] as TFile;
         setTimeout(() => {
           try {
-            this.tasks = this.taskManagerService.getAllTasksFromCache();
-            this.updateView();
+            const newTasks = this.taskManagerService.getAllTasksFromCache();
+            
+            // ✅ 优化：只有任务数据真正变化时才更新视图
+            if (this.hasTasksChanged(newTasks)) {
+              this.tasks = newTasks;
+              this.updateView();
+            }
           } catch (error) {
             console.error('[TaskPanelView] Failed to update view after cache update:', error);
           }
@@ -140,12 +124,21 @@ export class TaskPanelView extends ItemView {
       })
     );
 
-    // ✅ 监听文件删除和重命名事件（这些事件不会触发 cache-updated）
+    // ⚠️ 注意：文件删除和重命名事件的监听是必要的例外
+    // 原因：TaskManagerService 虽然会清理缓存，但无法主动通知 View 层"缓存已失效"
+    // 解决方案：View 层监听这些事件后，从 Service 的缓存重新加载（而非全量刷新）
+    
     this.plugin.registerEvent(
       this.app.vault.on('delete', (file: TAbstractFile) => {
         if (file instanceof TFile) {
-          setTimeout(async () => {
-            await this.refreshTasks();
+          setTimeout(() => {
+            try {
+              // ✅ 从缓存重新加载，而不是调用 refreshTasks() 全量刷新
+              this.tasks = this.taskManagerService.getAllTasksFromCache();
+              this.updateView();
+            } catch (error) {
+              console.error('[TaskPanelView] Failed to update view after file delete:', error);
+            }
           }, 100);
         }
       })
@@ -154,8 +147,14 @@ export class TaskPanelView extends ItemView {
     this.plugin.registerEvent(
       this.app.vault.on('rename', (file: TAbstractFile, oldPath: string) => {
         if (file instanceof TFile) {
-          setTimeout(async () => {
-            await this.refreshTasks();
+          setTimeout(() => {
+            try {
+              // ✅ 从缓存重新加载，而不是调用 refreshTasks() 全量刷新
+              this.tasks = this.taskManagerService.getAllTasksFromCache();
+              this.updateView();
+            } catch (error) {
+              console.error('[TaskPanelView] Failed to update view after file rename:', error);
+            }
           }, 100);
         }
       })
@@ -192,6 +191,45 @@ export class TaskPanelView extends ItemView {
   private handleFileModify(file: TFile): void {
     // 此方法不再使用，保留仅为向后兼容
     // 实际逻辑已迁移到 registerEventSubscription 中
+  }
+
+  /**
+   * 检查任务数据是否真正发生变化
+   * ✅ 优化：避免不必要的视图重建，提升性能
+   * 
+   * @param newTasks 新的任务列表
+   * @returns 如果任务数据有实质性变化则返回 true
+   */
+  private hasTasksChanged(newTasks: Task[]): boolean {
+    // 数量不同，肯定变化了
+    if (newTasks.length !== this.tasks.length) {
+      return true;
+    }
+    
+    // 数量相同，检查是否有任务的 ID 或状态变化
+    const oldTaskIds = new Set(this.tasks.map(t => t.id));
+    const newTaskIds = new Set(newTasks.map(t => t.id));
+    
+    // ID 集合不同，说明有增删
+    if (oldTaskIds.size !== newTaskIds.size) {
+      return true;
+    }
+    
+    for (const id of oldTaskIds) {
+      if (!newTaskIds.has(id)) {
+        return true;
+      }
+    }
+    
+    // 检查每个任务的状态是否变化
+    for (const newTask of newTasks) {
+      const oldTask = this.tasks.find(t => t.id === newTask.id);
+      if (!oldTask || oldTask.status !== newTask.status) {
+        return true;
+      }
+    }
+    
+    return false;
   }
 
   /**

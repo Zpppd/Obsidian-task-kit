@@ -20,6 +20,9 @@ export class TimeTrackingSettingsTab extends PluginSettingTab {
 		this.createTemplateHelp(containerEl);
 
 		// 进行中状态模板
+		const progressErrorEl = containerEl.createDiv({ cls: 'setting-error' });
+		const progressWarningEl = containerEl.createDiv({ cls: 'setting-warning' });
+
 		const progressSetting = new Setting(containerEl)
 			.setName('进行中状态模板');
 		
@@ -27,14 +30,14 @@ export class TimeTrackingSettingsTab extends PluginSettingTab {
 		const progressDescEl = progressSetting.descEl;
 		progressDescEl.innerHTML = this.createTemplateDescription(
 			'任务进入进行中状态时添加的时间标记格式',
-			'(::开始：{startDate})',
+			'(:开始：{startDate})',
 			this.plugin.settings.timeTracking.progressTemplate,
 			false
 		);
 		progressDescEl.style.whiteSpace = 'pre-line';
 		
 		progressSetting.addText(text => text
-			.setPlaceholder('(::{start})')
+			.setPlaceholder('(:{start})')
 			.setValue(this.plugin.settings.timeTracking.progressTemplate)
 			.onChange(async (value) => {
 				const validation = this.validateTemplateWithMixedFormatCheck(value, '进行中状态模板', 'progress');
@@ -64,17 +67,17 @@ export class TimeTrackingSettingsTab extends PluginSettingTab {
 				// 实时更新描述中的预览
 				progressDescEl.innerHTML = this.createTemplateDescription(
 					'任务进入进行中状态时添加的时间标记格式',
-					'(::开始：{startDate})',
+					'(:开始：{startDate})',
 					value,
 					false
 				);
 			})
 		);
-		
-		const progressErrorEl = containerEl.createDiv({ cls: 'setting-error' });
-		const progressWarningEl = containerEl.createDiv({ cls: 'setting-warning' });
 
 		// 已完成状态模板
+		const completedErrorEl = containerEl.createDiv({ cls: 'setting-error' });
+		const completedWarningEl = containerEl.createDiv({ cls: 'setting-warning' });
+
 		const completedSetting = new Setting(containerEl)
 			.setName('已完成状态模板');
 		
@@ -82,14 +85,14 @@ export class TimeTrackingSettingsTab extends PluginSettingTab {
 		const completedDescEl = completedSetting.descEl;
 		completedDescEl.innerHTML = this.createTemplateDescription(
 			'任务完成时添加的时间标记格式',
-			'(::开始：{startDate} - 结束：{endDate})',
+			'(:开始：{startDate} - 结束：{endDate})',
 			this.plugin.settings.timeTracking.completedTemplate,
 			true
 		);
 		completedDescEl.style.whiteSpace = 'pre-line';
 		
 		completedSetting.addText(text => text
-			.setPlaceholder('(::{start} - {end})')
+			.setPlaceholder('(:{startDate} - {endDate})')
 			.setValue(this.plugin.settings.timeTracking.completedTemplate)
 			.onChange(async (value) => {
 				const validation = this.validateTemplateWithMixedFormatCheck(value, '已完成状态模板', 'completed');
@@ -119,15 +122,12 @@ export class TimeTrackingSettingsTab extends PluginSettingTab {
 				// 实时更新描述中的预览
 				completedDescEl.innerHTML = this.createTemplateDescription(
 					'任务完成时添加的时间标记格式',
-					'(::开始：{startDate} - 结束：{endDate})',
+					'(:开始：{startDate} - 结束：{endDate})',
 					value,
 					true
 				);
 			})
 		);
-		
-		const completedErrorEl = containerEl.createDiv({ cls: 'setting-error' });
-		const completedWarningEl = containerEl.createDiv({ cls: 'setting-warning' });
 
 		// 重置为默认值按钮
 		new Setting(containerEl)
@@ -136,8 +136,8 @@ export class TimeTrackingSettingsTab extends PluginSettingTab {
 			.addButton(button => button
 				.setButtonText('重置')
 				.onClick(async () => {
-					this.plugin.settings.timeTracking.progressTemplate = '(::{start})';
-					this.plugin.settings.timeTracking.completedTemplate = '(::{start} - {end})';
+					this.plugin.settings.timeTracking.progressTemplate = '(:{start})';
+					this.plugin.settings.timeTracking.completedTemplate = '(:{start} - {end})';
 					await this.plugin.saveSettings();
 					this.display();
 				})
@@ -442,7 +442,7 @@ export class TimeTrackingSettingsTab extends PluginSettingTab {
 			1. 不允许混合格式：模板中不能同时使用 <code>{startDate}/{endDate}</code> 和 <code>{start}/{end}</code><br>
 			2. 变量必须配对：<code>{start}</code> 与 <code>{end}</code>、<code>{startDate}</code> 与 <code>{endDate}</code> 必须成对出现<br>
 			3. 进行中模板必须包含开始时间，已完成模板必须包含时间范围或耗时信息<br>
-			4. 建议使用 <code>(::...)</code> 格式以避免与 Markdown 链接冲突
+			4. 建议使用 <code>(:...)</code> 格式以避免与 Markdown 链接冲突
 		`;
 
 	}

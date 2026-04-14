@@ -82,7 +82,7 @@ export class TimeTemplateRenderer {
       return { valid: false, error: '模板不能为空' };
     }
 
-    // 检查 (::) 圆括号匹配
+    // 检查 (: ) 圆括号匹配
     const openParentheses = (template.match(/\(/g) || []).length;
     const closeParentheses = (template.match(/\)/g) || []).length;
     
@@ -137,8 +137,8 @@ export class TimeTemplateRenderer {
   ): { valid: boolean; error?: string; warning?: string } {
     // 1. 标识符格式建议性警告
     let warning: string | undefined;
-    if (!template.includes('(::')) {
-      warning = '建议使用 (::...) 格式以避免与 Markdown 链接语法冲突';
+    if (!template.includes('(:')) {
+      warning = '建议使用 (:...) 格式以避免与 Markdown 链接语法冲突';
     }
 
     // 2. 检查混合格式

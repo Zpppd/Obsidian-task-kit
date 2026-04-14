@@ -20,8 +20,8 @@ export class TimeTrackerParser {
 	 * @returns 时间追踪信息或 null
 	 */
 	parseTimeTracking(text: string, now: moment.Moment): TimeTracking | null {
-		// ✅ 优先匹配 (::...) 新格式，避免与 Markdown 链接语法冲突
-		const identifierMatch = text.match(/\(::([^)]+)\)/);
+		// ✅ 优先匹配 (:...) 格式，避免与 Markdown 语法冲突
+		const identifierMatch = text.match(/\(:([^)]+)\)/);
 		
 		if (identifierMatch) {
 			const content = identifierMatch[1].trim(); // 提取括号内的内容
@@ -160,16 +160,16 @@ export class TimeTrackerParser {
 
 	/**
 	 * 从文本中移除时间追踪标记
-	 * ✅ 支持 (::...) 新格式，避免与链接语法冲突
+	 * ✅ 支持 (:...) 格式，避免与 Markdown 链接语法 [...]((...)) 冲突
 	 * 
 	 * 支持的格式：
-	 * 1. (::HH:mm) - 进行中任务
-	 * 2. (::HH:mm - HH:mm) - 已完成任务
-	 * 3. (::YYYY-MM-DD HH:mm - YYYY-MM-DD HH:mm) - 完整日期时间
+	 * 1. (:HH:mm) - 进行中任务
+	 * 2. (:HH:mm - HH:mm) - 已完成任务
+	 * 3. (:YYYY-MM-DD HH:mm - YYYY-MM-DD HH:mm) - 完整日期时间
 	 */
 	removeTimeTrackingTag(text: string): string {
-		// ✅ 移除 (::...) 格式的标记
-		text = text.replace(/\s*\(::[^)]+\)/g, '');
+		// ✅ 移除 (:...) 格式的标记，包括前面的可选空白字符
+		text = text.replace(/\s*\(:[^)]+\)/g, '');
 		
 		return text.trim();
 	}

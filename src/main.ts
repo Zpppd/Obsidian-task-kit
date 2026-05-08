@@ -76,10 +76,8 @@ export default class TaskMasterProPlugin extends Plugin {
 			}
 		});
 		
-		// ✅ 新增：在布局就绪后自动打开任务面板
-		this.app.workspace.onLayoutReady(() => {
-			this.openTaskPanel();
-		});
+		// 移除自动打开面板功能，完全依赖 Obsidian 的布局恢复机制
+		// 用户可通过 Ribbon 图标或命令手动打开面板
 	}
 
 	onunload() {

@@ -111,3 +111,34 @@ Task Master Pro 插件全局样式
 .workspace-leaf-content[data-type='task-master-pro-panel'] .view-content {
   padding: 0 !important;
 }
+
+/* ========================================
+   提醒弹窗样式
+   ======================================== */
+
+.reminder-modal-title {
+  margin: 0 0 8px 0;
+  color: var(--text-normal);
+  font-size: var(--font-ui-medium);
+  word-break: break-word;
+}
+
+.reminder-modal-file {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.reminder-modal hr {
+  margin: 12px 0;
+  border: none;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.reminder-modal .reminder-modal-actions button {
+  cursor: pointer;
+}
+
+.reminder-modal .reminder-modal-actions select {
+  font-size: var(--font-ui-small);
+}

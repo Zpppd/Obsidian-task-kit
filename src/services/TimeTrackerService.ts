@@ -9,6 +9,8 @@ import type TaskMasterProPlugin from '../main';
 /**
  * 时间追踪服务
  * 负责任务的三态切换和时间追踪管理
+ *
+ * 切换时采用"手术式更新"：只改 checkbox 和时间标记，保留行内其他内容不变。
  */
 export class TimeTrackerService {
 	private app: App;
@@ -21,16 +23,10 @@ export class TimeTrackerService {
 		this.plugin = plugin;
 	}
 
-	/**
-	 * 切换任务状态（主入口）
-	 */
 	async toggleTaskStatus(task: Task): Promise<void> {
-		// ✅ 检查功能是否启用
 		if (!this.plugin.settings.enableTimeTracking) {
-			console.log('[TimeTrackerService] Time tracking is disabled, skipping status toggle logic.');
 			return;
 		}
-
 		try {
 			switch (task.status) {
 				case TaskStatus.Pending:
@@ -42,8 +38,6 @@ export class TimeTrackerService {
 				case TaskStatus.Completed:
 					await this.resetTask(task);
 					break;
-				default:
-					console.warn(`Unknown task status: ${task.status}`);
 			}
 		} catch (error) {
 			console.error('Failed to toggle task status:', error);
@@ -51,130 +45,112 @@ export class TimeTrackerService {
 		}
 	}
 
-	/**
-	 * Pending → Progress（开始任务）
-	 */
 	private async startTask(task: Task): Promise<void> {
 		const now = this.getCurrentTime();
-		
 		task.status = TaskStatus.Progress;
-		
-		const progressTemplate = this.plugin.settings.timeTracking.progressTemplate;
-		
 		task.timeTracking = {
 			startTime: now.clone(),
 			endTime: undefined,
 			durationMinutes: undefined,
-			usedTemplate: progressTemplate
 		};
-		
-		const timeMarker = TimeTemplateRenderer.render(progressTemplate, now);
-		const newLine = this.buildTaskLineWithTimeMarker(task, timeMarker);
-		
+
+		const newLine = this.buildSurgicalLine(task);
 		await this.taskParser.updateTaskLine(task, newLine);
+		task.originalLine = newLine;
 	}
 
-	/**
-	 * Progress → Completed（完成任务）
-	 */
 	private async completeTask(task: Task): Promise<void> {
 		const now = this.getCurrentTime();
-		
-		if (!task.timeTracking || !task.timeTracking.startTime) {
-			console.warn('[TimeTrackerService] Task has no start time, cannot complete');
+		if (!task.timeTracking?.startTime) {
 			return;
 		}
-		
-		const startTime = task.timeTracking.startTime;
-		const durationMinutes = this.calculateDuration(startTime, now);
-		const durationDate = this.formatDuration(durationMinutes);
-		
+
+		const durationMinutes = this.calculateDuration(task.timeTracking.startTime, now);
 		task.status = TaskStatus.Completed;
-		
 		task.timeTracking.endTime = now.clone();
 		task.timeTracking.durationMinutes = durationMinutes;
-		
-		const timeMarker = TimeTemplateRenderer.render(
-			this.plugin.settings.timeTracking.completedTemplate,
-			startTime,
-			now,
-			durationDate
-		);
-		
-		const newLine = this.buildTaskLineWithTimeMarker(task, timeMarker);
+
+		const newLine = this.buildSurgicalLine(task);
 		await this.taskParser.updateTaskLine(task, newLine);
+		task.originalLine = newLine;
 	}
 
-	/**
-	 * Completed → Pending（回退任务）
-	 */
 	private async resetTask(task: Task): Promise<void> {
 		task.status = TaskStatus.Pending;
 		task.timeTracking = undefined;
-		
-		const newLine = this.taskParser.buildTaskLine(task);
+
+		const newLine = this.buildSurgicalLine(task);
 		await this.taskParser.updateTaskLine(task, newLine);
+		task.originalLine = newLine;
 	}
 
 	/**
-	 * 构建带有时间标记的任务行
+	 * 手术式更新行：只改 checkbox 和时间标记，保留提醒时间、标签等其他内容不变
 	 */
-	private buildTaskLineWithTimeMarker(task: Task, timeMarker: string): string {
-		const prefix = task.indentation || '-';
-		const checkboxMap = {
-			[TaskStatus.Pending]: '[ ]',
-			[TaskStatus.Progress]: '[/]',
-			[TaskStatus.Completed]: '[x]'
+	private buildSurgicalLine(task: Task): string {
+		const line = task.originalLine;
+
+		// 1. 替换 checkbox 状态
+		const statusChars: Record<string, string> = {
+			[TaskStatus.Pending]: ' ',
+			[TaskStatus.Progress]: '/',
+			[TaskStatus.Completed]: 'x',
 		};
-		
-		const checkbox = checkboxMap[task.status];
-		return `${prefix} ${checkbox} ${task.content}${timeMarker ? ' ' + timeMarker : ''}`;
+		const newChar = statusChars[task.status];
+		let newLine = line.replace(/^(\s*-\s*\[).(\])/, `$1${newChar}$2`);
+
+		// 2. 移除旧的时间追踪标记
+		newLine = newLine.replace(/\s*\(:[^)]+\)/g, '');
+
+		// 3. 追加新的时间追踪标记
+		if (task.timeTracking && this.plugin.settings.enableTimeTracking) {
+			const s = this.plugin.settings.timeTracking;
+			let marker = '';
+			if (task.timeTracking.endTime && task.timeTracking.durationMinutes !== undefined && task.timeTracking.startTime) {
+				const durationDate = this.formatDuration(task.timeTracking.durationMinutes);
+				marker = TimeTemplateRenderer.render(
+					s.completedTemplate,
+					task.timeTracking.startTime,
+					task.timeTracking.endTime,
+					durationDate,
+				);
+			} else if (task.timeTracking.startTime) {
+				marker = TimeTemplateRenderer.render(s.progressTemplate, task.timeTracking.startTime);
+			}
+			if (marker) {
+				newLine = newLine.trimEnd() + ` ${marker}`;
+			}
+		}
+
+		return newLine.trimEnd();
 	}
 
-	/**
-	 * 计算任务耗时（分钟），支持跨天情况
-	 */
+	// ==================== 耗时计算 ====================
+
 	private calculateDuration(startTime: moment.Moment, endTime: moment.Moment): number {
 		let adjustedEndTime = endTime.clone();
-		
 		if (adjustedEndTime.isBefore(startTime)) {
 			adjustedEndTime.add(1, 'day');
 		}
-		
-		const duration = adjustedEndTime.diff(startTime, 'minutes');
-		return Math.max(0, duration);
+		return Math.max(0, adjustedEndTime.diff(startTime, 'minutes'));
 	}
 
-	/**
-	 * 格式化耗时为可读字符串
-	 */
 	private formatDuration(minutes: number): string {
 		const hours = Math.floor(minutes / 60);
 		const remainingMinutes = minutes % 60;
-		
-		if (hours > 0 && remainingMinutes > 0) {
-			return `${hours}小时${remainingMinutes}分钟`;
-		} else if (hours > 0) {
-			return `${hours}小时`;
-		} else {
-			return `${remainingMinutes}分钟`;
-		}
+		if (hours > 0 && remainingMinutes > 0) return `${hours}小时${remainingMinutes}分钟`;
+		if (hours > 0) return `${hours}小时`;
+		return `${remainingMinutes}分钟`;
 	}
 
-	/**
-	 * 获取当前时间
-	 */
 	private getCurrentTime(): moment.Moment {
 		return moment();
 	}
 
-	/**
-	 * 格式化时间追踪信息为显示文本
-	 */
+	// ==================== 显示文本（用于面板渲染） ====================
+
 	formatDisplayText(task: Task, format: string = 'range'): string {
-		if (!task.timeTracking || !task.timeTracking.startTime) {
-			return '';
-		}
+		if (!task.timeTracking?.startTime) return '';
 
 		switch (format) {
 			case 'range':
@@ -184,40 +160,31 @@ export class TimeTrackerService {
 						this.plugin.settings.timeTracking.completedTemplate,
 						task.timeTracking.startTime,
 						task.timeTracking.endTime,
-						durationDate
+						durationDate,
 					);
 				} else {
 					return TimeTemplateRenderer.render(
 						this.plugin.settings.timeTracking.progressTemplate,
-						task.timeTracking.startTime
+						task.timeTracking.startTime,
 					);
 				}
-
 			case 'duration':
 				if (task.timeTracking.durationMinutes !== undefined) {
 					return `[⏱️ ${task.timeTracking.durationMinutes} 分钟]`;
 				} else if (task.timeTracking.startTime) {
 					const now = this.getCurrentTime();
-					const duration = this.calculateDuration(task.timeTracking.startTime, now);
-					return `[⏱️ ${duration} 分钟]`;
+					return `[⏱️ ${this.calculateDuration(task.timeTracking.startTime, now)} 分钟]`;
 				}
 				return '';
-
 			case 'ai':
 				if (task.timeTracking.durationMinutes !== undefined) {
-					const hours = Math.floor(task.timeTracking.durationMinutes / 60);
-					const minutes = task.timeTracking.durationMinutes % 60;
-					
-					if (hours > 0 && minutes > 0) {
-						return `[📝 ${hours} 小时 ${minutes} 分]`;
-					} else if (hours > 0) {
-						return `[📝 ${hours} 小时]`;
-					} else {
-						return `[📝 ${minutes} 分钟]`;
-					}
+					const h = Math.floor(task.timeTracking.durationMinutes / 60);
+					const m = task.timeTracking.durationMinutes % 60;
+					if (h > 0 && m > 0) return `[📝 ${h} 小时 ${m} 分]`;
+					if (h > 0) return `[📝 ${h} 小时]`;
+					return `[📝 ${m} 分钟]`;
 				}
 				return '';
-
 			default:
 				return this.formatDisplayText(task, 'range');
 		}

@@ -114,8 +114,13 @@ export class TaskParser {
 		const tags = this.extractTags(fullContent);
 
 		// 4. 提取提醒时间
-		const now = moment();
-		const reminderTime = this.reminderParser.parseReminderTime(fullContent, now) || undefined;
+			const now = moment();
+			const reminderTime =
+				this.reminderParser.parseReminderTime(
+					fullContent,
+					now,
+					this.getSettings().reminder.defaultReminderTime,
+				) || undefined;
 
 		// 5. 提取时间追踪信息
 		const timeTracking = this.timeTrackerParser.parseTimeTracking(fullContent, now) || undefined;

@@ -39,7 +39,6 @@ export class TimeTrackingSettingsTab extends PluginSettingTab {
 
 		if (!this.plugin.settings.enableTimeTracking) return;
 
-		// 进行中任务提醒（联动）
 		const progressSetting = new Setting(el)
 			.setName('提醒进行中任务')
 			.setDesc('开启后对 -[/] 任务也触发提醒');
@@ -59,11 +58,42 @@ export class TimeTrackingSettingsTab extends PluginSettingTab {
 
 	private renderTemplateSettings(el: HTMLElement): void {
 		el.createEl('h3', { text: '时间标记格式' });
-		const varDesc = el.createEl('div', {
-			cls: 'setting-item-description',
-			text: '可用变量：{start} {end} {startDate} {endDate} {duration} {durationDate}',
+
+		// 变量说明表格
+		const tbl = el.createEl('table');
+		tbl.style.cssText =
+			'width:100%;margin:6px 0;font-size:var(--font-ui-small);' +
+			'border-collapse:collapse;border:1px solid var(--background-modifier-border)';
+		const rows: [string, string, string][] = [
+			['{start}', '开始时间', '14:30'],
+			['{end}', '结束时间', '15:45'],
+			['{startDate}', '开始日期时间', '2026-05-21 14:30'],
+			['{endDate}', '结束日期时间', '2026-05-21 15:45'],
+			['{duration}', '耗时分钟数', '75'],
+			['{durationDate}', '耗时文本', '1小时15分钟'],
+		];
+		rows.forEach(([v, desc, ex]) => {
+			const r = tbl.createEl('tr');
+			r.createEl('td', {
+				text: v,
+				attr: { style: 'font-weight:600;border:1px solid var(--background-modifier-border);padding:3px 8px;font-size:var(--font-ui-small)' },
+			});
+			r.createEl('td', {
+				text: desc,
+				attr: { style: 'border:1px solid var(--background-modifier-border);padding:3px 8px;font-size:var(--font-ui-small)' },
+			});
+			r.createEl('td', {
+				text: ex,
+				attr: { style: 'color:var(--text-muted);border:1px solid var(--background-modifier-border);padding:3px 8px;font-size:var(--font-ui-small)' },
+			});
 		});
-		varDesc.style.marginBottom = '8px';
+
+		// 模板示例
+		const eg = el.createEl('div', { cls: 'setting-item-description' });
+		eg.style.marginTop = '6px';
+		eg.innerHTML =
+			'示例：<code>(:{start})</code> → (∶14:30)　' +
+			'<code>(:{start} - {end})</code> → (∶14:30 - 15:45)';
 
 		const makeSetting = (
 			name: string,
@@ -169,12 +199,15 @@ export class TimeTrackingSettingsTab extends PluginSettingTab {
 	private renderPresetSettings(el: HTMLElement): void {
 		el.createEl('h3', { text: '稍后提醒预设' });
 
-		const list = el.createDiv({ cls: 'setting-item-description' });
+		const list = el.createDiv();
 		const render = () => {
 			list.empty();
 			const presets = this.plugin.settings.reminder.snoozePresets;
 			if (presets.length === 0) {
-				list.textContent = '暂无预设';
+				list.createEl('div', {
+					cls: 'setting-item-description',
+					text: '暂无预设',
+				});
 				return;
 			}
 			presets.forEach((min, i) => {
@@ -204,28 +237,28 @@ export class TimeTrackingSettingsTab extends PluginSettingTab {
 		render();
 
 		let textComp: any;
-			new Setting(el)
-				.setName('添加预设')
-				.setDesc('输入分钟数')
-				.addText(t => {
-					textComp = t;
-					t.setPlaceholder('15');
-					t.inputEl.type = 'number';
-					t.inputEl.min = '1';
-				})
-				.addButton(b =>
-					b.setButtonText('添加').onClick(async () => {
-						const v = parseInt(textComp.getValue());
-						if (!v || v <= 0) return new Notice('请输入有效分钟数');
-						if (this.plugin.settings.reminder.snoozePresets.includes(v))
-							return new Notice('已存在');
-						this.plugin.settings.reminder.snoozePresets.push(v);
-						this.plugin.settings.reminder.snoozePresets.sort((a, b) => a - b);
-						await this.plugin.saveSettings();
-						render();
-						textComp.inputEl.value = '';
-					}),
-				);
+		new Setting(el)
+			.setName('添加预设')
+			.setDesc('输入分钟数')
+			.addText(t => {
+				textComp = t;
+				t.setPlaceholder('15');
+				t.inputEl.type = 'number';
+				t.inputEl.min = '1';
+			})
+			.addButton(b =>
+				b.setButtonText('添加').onClick(async () => {
+					const v = parseInt(textComp.getValue());
+					if (!v || v <= 0) return new Notice('请输入有效分钟数');
+					if (this.plugin.settings.reminder.snoozePresets.includes(v))
+						return new Notice('已存在');
+					this.plugin.settings.reminder.snoozePresets.push(v);
+					this.plugin.settings.reminder.snoozePresets.sort((a, b) => a - b);
+					await this.plugin.saveSettings();
+					render();
+					textComp.inputEl.value = '';
+				}),
+			);
 	}
 
 	// ==================== 扫描目录 ====================

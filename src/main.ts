@@ -14,7 +14,7 @@ export default class TaskMasterProPlugin extends Plugin {
 	taskParser!: TaskParser;
 	timeTrackerService!: TimeTrackerService;
 	taskManagerService!: TaskManagerService;
-	private reminderScheduler!: ReminderScheduler;
+	reminderScheduler!: ReminderScheduler;
 
 	// 插件设置
 	settings: PluginSettings = DEFAULT_SETTINGS;

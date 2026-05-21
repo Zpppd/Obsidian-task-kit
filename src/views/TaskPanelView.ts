@@ -232,6 +232,12 @@ export class TaskPanelView extends ItemView {
       if (JSON.stringify(oldTask.timeTracking) !== JSON.stringify(newTask.timeTracking)) {
         return true;
       }
+      if ((oldTask.reminderTime?.valueOf() ?? 0) !== (newTask.reminderTime?.valueOf() ?? 0)) {
+        return true;
+      }
+      if (JSON.stringify(oldTask.tags) !== JSON.stringify(newTask.tags)) {
+        return true;
+      }
     }
     
     return false;

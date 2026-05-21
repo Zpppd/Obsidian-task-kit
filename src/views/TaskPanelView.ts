@@ -98,16 +98,6 @@ export class TaskPanelView extends ItemView {
   }
 
   /**
-   * 注册文件监听器（已废弃）
-   * @deprecated 此方法已被 registerEventSubscription 替代，不应再使用
-   * 违反架构规范：View层不应直接监听底层文件系统事件
-   */
-  private registerFileListener(): void {
-    // 此方法不再使用，保留仅为向后兼容
-    // 实际逻辑已迁移到 registerEventSubscription 中
-  }
-
-  /**
    * 订阅 TaskManagerService 的缓存更新事件
    * ✅ 符合架构规范：View层不直接监听底层文件系统事件
    * 
@@ -196,15 +186,6 @@ export class TaskPanelView extends ItemView {
   async refreshTasks(): Promise<void> {
     await this.loadTasks();
     this.updateView();
-  }
-
-  /**
-   * 处理文件修改事件（已废弃，改用事件订阅）
-   * @deprecated 此方法已被 registerEventSubscription 替代
-   */
-  private handleFileModify(file: TFile): void {
-    // 此方法不再使用，保留仅为向后兼容
-    // 实际逻辑已迁移到 registerEventSubscription 中
   }
 
   /**

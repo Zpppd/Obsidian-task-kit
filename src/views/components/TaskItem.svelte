@@ -21,34 +21,6 @@
     }
   }
 
-  // ✅ 获取状态文本
-  function getStatusText(): string {
-    switch (task.status) {
-      case 'pending':
-        return '待办';
-      case 'progress':
-        return '进行中';
-      case 'completed':
-        return '已完成';
-      default:
-        return '';
-    }
-  }
-
-  // ✅ 获取状态 CSS 类
-  function getStatusClass(): string {
-    switch (task.status) {
-      case 'pending':
-        return 'status-pending';
-      case 'progress':
-        return 'status-progress';
-      case 'completed':
-        return 'status-completed';
-      default:
-        return '';
-    }
-  }
-
   // ✅ 格式化时间追踪信息（使用 TimeTrackerService）
   function formatTimeTracking(): string {
     if (!task.timeTracking) {

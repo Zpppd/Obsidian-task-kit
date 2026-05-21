@@ -7,7 +7,6 @@ import { ReminderScheduler } from './services/ReminderScheduler';
 import { TaskPanelView, TASK_PANEL_VIEW_TYPE } from './views/TaskPanelView';
 import type { Task } from './types/task';
 import { DEFAULT_SETTINGS, type PluginSettings } from './types/settings';
-import { TimeTemplateRenderer } from './utils/TimeTemplateRenderer';
 import { TimeTrackingSettingsTab } from './settings/TimeTrackingSettingsTab';
 
 export default class TaskMasterProPlugin extends Plugin {

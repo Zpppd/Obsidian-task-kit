@@ -59,7 +59,6 @@
       return true;
     });
     
-    console.log('[TaskList] ✅ Filtered tasks count:', filteredTasks.length);
   }
 
   // 按文件分组

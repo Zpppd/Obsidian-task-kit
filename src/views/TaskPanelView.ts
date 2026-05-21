@@ -7,7 +7,7 @@ import { TaskManagerService } from '../services/TaskManagerService';
 import { TaskList } from './components';
 import type TaskMasterProPlugin from '../main';
 
-export const TASK_PANEL_VIEW_TYPE = 'task-master-pro-panel';
+export const TASK_PANEL_VIEW_TYPE = 'task-kit-panel';
 
 export class TaskPanelView extends ItemView {
   private taskParser: TaskParser;

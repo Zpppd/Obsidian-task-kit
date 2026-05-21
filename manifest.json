@@ -1,10 +1,10 @@
 {
-	"id": "task-master-pro",
-	"name": "Task Master Pro",
+	"id": "task-kit",
+	"name": "TaskKit",
 	"version": "0.1.0",
-	"minAppVersion": "1.4.0",
-	"description": "Integrated task panel, smart reminders, and time tracking for Obsidian",
-	"author": "Task Master Pro Team",
-	"authorUrl": "https://github.com/your-name/task-master-pro",
+	"minAppVersion": "1.0.0",
+	"description": "任务面板、时间追踪与提醒通知三合一",
+	"author": "HHH",
+	"authorUrl": "",
 	"isDesktopOnly": false
 }

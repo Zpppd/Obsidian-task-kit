@@ -4,7 +4,7 @@
 **主题**: CSS Snippet 实现多视图一致的 Checkbox 样式  
 **状态**: ✅ 已完成  
 **相关文件**: 
-- CSS Snippet: `task-master-pro-in-progress.css` (工作区根目录)
+- CSS Snippet: `task-kit-in-progress.css` (工作区根目录)
 - 参考主题: `obsidian-things-main/theme.css`
 
 ---
@@ -310,14 +310,14 @@ border-radius: var(--checkbox-radius, 30%) !important;
 
 ```
 工作区根目录/
-└── task-master-pro-in-progress.css  ← CSS Snippet 文件
+└── task-kit-in-progress.css  ← CSS Snippet 文件
 ```
 
 ### 用户安装步骤
 
 1. **复制文件**
    ```bash
-   将 task-master-pro-in-progress.css 复制到
+   将 task-kit-in-progress.css 复制到
    你的Obsidian仓库/.obsidian/snippets/
    ```
 
@@ -325,7 +325,7 @@ border-radius: var(--checkbox-radius, 30%) !important;
    - 打开 Obsidian 设置
    - 导航到 **外观** → **CSS 代码片段**
    - 点击刷新按钮（🔄）
-   - 找到 `task-master-pro-in-progress` 并启用
+   - 找到 `task-kit-in-progress` 并启用
 
 3. **查看效果**
    - 重新打开包含 `[/]` 任务的笔记
@@ -350,7 +350,7 @@ border-radius: var(--checkbox-radius, 30%) !important;
 
 ### 修改样式
 
-如需调整样式，编辑 `task-master-pro-in-progress.css` 文件：
+如需调整样式，编辑 `task-kit-in-progress.css` 文件：
 
 ```css
 /* 修改半填充颜色 */
@@ -439,7 +439,7 @@ input.task-list-item-checkbox[data-task='@']:after {
 
 2. **验证 Snippet 加载**
    ```javascript
-   document.querySelector('link[href*="task-master-pro-in-progress"]')
+   document.querySelector('link[href*="task-kit-in-progress"]')
    ```
 
 3. **分步测试**

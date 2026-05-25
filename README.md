@@ -66,8 +66,18 @@ Obsidian 插件，提供任务面板、时间追踪和提醒通知功能。
 ## 安装
 
 1. 从 Releases 下载最新版
-2. 解压到 `vault/.obsidian/plugins/task-master-pro/`
+2. 解压到 `vault/.obsidian/plugins/task-kit/`
 3. 在 Obsidian 设置中启用插件
+
+## CSS 片段（重要）
+
+为确保进行中任务 `[/]` 显示正确的样式效果，需要手动启用 CSS 片段：
+
+1. 将 `task-kit-in-progress.css` 复制到你的仓库的 `.obsidian/snippets/` 目录下
+2. 在 Obsidian 设置 → 外观 → CSS 代码片段 中启用 "task-kit-in-progress"
+3. 刷新页面即可看到效果
+
+**注意**：如果不启用此 CSS 片段，进行中标记 `[/]` 可能无法正确显示样式。
 
 ## 设置
 
@@ -84,6 +94,16 @@ Obsidian 插件，提供任务面板、时间追踪和提醒通知功能。
 npm install
 npm run build
 ```
+
+## 参考项目
+
+本项目在开发过程中参考了以下优秀的开源项目，特此致谢：
+
+- **[time-tracker-plugin](https://github.com/)** - 时间追踪功能的实现思路
+- **[obsidian-reminder-master](https://github.com/uphy/obsidian-reminder)** - 提醒通知系统的设计与实现
+- **[obsidian-checklist-plugin-master](https://github.com/delashum/obsidian-checklist-plugin)** - 任务清单管理的最佳实践
+
+以上项目均采用 MIT 许可证，感谢原作者的杰出贡献！
 
 ## 许可证
 

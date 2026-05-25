@@ -17,7 +17,7 @@ export default defineConfig({
         }
         
         // ✅ 合并 Vite 生成的 CSS 和根目录 styles.css
-        const generatedCssFile = resolve(__dirname, 'dist', 'task-master-pro.css')
+        const generatedCssFile = resolve(__dirname, 'dist', 'task-kit.css')
         const rootStylesFile = resolve(__dirname, 'styles.css')
         const finalCssFile = resolve(__dirname, 'dist', 'styles.css')
         

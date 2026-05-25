@@ -108,7 +108,7 @@ Task Master Pro 插件全局样式
    ======================================== */
 
 /* 移除任务面板的默认内边距 */
-.workspace-leaf-content[data-type='task-master-pro-panel'] .view-content {
+.workspace-leaf-content[data-type='task-kit-panel'] .view-content {
   padding: 0 !important;
 }
 

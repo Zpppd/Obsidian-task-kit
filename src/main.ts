@@ -54,13 +54,13 @@ export default class TaskMasterProPlugin extends Plugin {
 		});
 
 		// Ribbon 图标
-		this.addRibbonIcon('list-todo', 'Open Task Panel', () => {
+		this.addRibbonIcon('list-todo', '打开任务面板', () => {
 			this.openTaskPanel();
 		});
 
 		this.addCommand({
 			id: 'open-task-panel',
-			name: 'Open Task Panel',
+			name: '打开任务面板',
 			callback: () => {
 				this.openTaskPanel();
 			}

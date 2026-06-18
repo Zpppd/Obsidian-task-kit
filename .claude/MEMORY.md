@@ -1,0 +1,7 @@
+- [项目概述](project-overview.md) — 项目定位、功能模块、开发信息
+- [三层架构](architecture-layers.md) — Parser → Service → View 分层设计
+- [核心类型定义](key-data-types.md) — Task、PluginSettings 等关键类型
+- [Bug 修复历史](bugfix-history.md) — 历史 Bug 修复记录索引
+- [构建与工具链](build-and-tools.md) — Vite 构建配置、开发命令
+- [项目文档索引](project-docs.md) — docs/ 目录文档索引
+- [快捷添加任务功能](quick-add-feature.md) — Quick Add 功能需求方案

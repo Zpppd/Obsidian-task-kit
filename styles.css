@@ -19,6 +19,33 @@ Task Master Pro 插件全局样式
 }
 
 /* ========================================
+   进行中任务 Checkbox 半填充效果（全局）
+   放在全局样式表而非仅靠 Svelte scoped CSS，
+   确保 Obsidian 重启后首次渲染即可生效。
+   使用 background gradient 替代 ::after 伪元素，
+   因为 <input> 是替换元素，::after 在 Electron 中不兼容。
+   ======================================== */
+
+.task-checkbox-input.checkbox-progress {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  accent-color: transparent !important;
+  border: 2px solid var(--interactive-accent) !important;
+  border-radius: var(--checkbox-radius, 4px) !important;
+  background: linear-gradient(
+    to right,
+    var(--interactive-accent) 50%,
+    transparent 50%
+  ) !important;
+  background-color: transparent !important;
+}
+
+.task-checkbox-input.checkbox-progress:hover {
+  border-color: var(--interactive-accent-hover, var(--interactive-accent)) !important;
+  box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb, 0, 122, 255), 0.2);
+}
+
+/* ========================================
    时间追踪设置界面样式
    ======================================== */
 

@@ -149,6 +149,57 @@ export class TaskManagerService extends Events {
 	}
 
 	/**
+	 * 强制刷新所有任务缓存
+	 *
+	 * 使用场景：
+	 * - 用户修改了扫描目录白名单
+	 * - 用户点击了手动刷新按钮
+	 * - 需要从磁盘重新加载所有任务
+	 *
+	 * 与 loadAllTasks() 的区别：
+	 * - 不受 isLoading 标志限制（强制执行）
+	 * - 完成后触发 'cache-updated' 事件通知所有订阅者
+	 */
+	async refreshAllTasks(): Promise<void> {
+		try {
+			// 清除现有缓存
+			this.tasksCache.clear();
+
+			// 重新加载所有任务
+			const validFiles = this.getValidMarkdownFiles();
+
+			const batchSize = 50;
+			for (let i = 0; i < validFiles.length; i += batchSize) {
+				const batch = validFiles.slice(i, i + batchSize);
+
+				const promises = batch.map(async (file) => {
+					try {
+						const tasks = await this.taskParser.parseFile(file);
+						return { filePath: file.path, tasks, success: true };
+					} catch (error) {
+						console.error(`[TaskManagerService] Failed to parse file ${file.path}:`, error);
+						return { filePath: file.path, tasks: [], success: false };
+					}
+				});
+
+				const results = await Promise.all(promises);
+
+				for (const result of results) {
+					if (result.success) {
+						this.tasksCache.set(result.filePath, result.tasks);
+					}
+				}
+			}
+
+			// ✅ 通知所有订阅者：缓存已完全重建
+			// 传递 null 表示"全量刷新"（非单文件变更）
+			this.trigger('cache-updated', null);
+		} catch (error) {
+			console.error('[TaskManagerService] Failed to refresh all tasks:', error);
+		}
+	}
+
+	/**
 	 * 获取缓存统计信息
 	 */
 	getCacheStats(): { fileCount: number; totalTasks: number } {

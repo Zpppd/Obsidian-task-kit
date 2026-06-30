@@ -1,24 +1,24 @@
 <script lang="ts">
   export let searchText: string = '';
   export let statusFilter: 'all' | 'pending' | 'progress' | 'completed' = 'all';
-  
+
   // 定义事件派发器
   import { createEventDispatcher } from 'svelte';
   const dispatch = createEventDispatcher();
 
   function handleSearchInput(event: Event) {
     const target = event.target as HTMLInputElement;
-    dispatch('filter-change', { 
-      type: 'search', 
-      value: target.value 
+    dispatch('filter-change', {
+      type: 'search',
+      value: target.value
     });
   }
 
   function handleStatusChange(event: Event) {
     const target = event.target as HTMLSelectElement;
-    dispatch('filter-change', { 
-      type: 'status', 
-      value: target.value 
+    dispatch('filter-change', {
+      type: 'status',
+      value: target.value
     });
   }
 </script>
@@ -33,7 +33,7 @@
       class="search-input"
     />
   </div>
-  
+
   <div class="filter-status">
     <select value={statusFilter} on:change={handleStatusChange} class="status-select">
       <option value="all">全部状态</option>
@@ -65,13 +65,13 @@
     background-color: var(--background-primary);
     color: var(--text-normal);
     font-size: var(--font-ui-small);
-    
+
     &:focus {
       outline: none;
       border-color: var(--color-accent);
       box-shadow: 0 0 0 2px var(--color-accent-tint);
     }
-    
+
     &::placeholder {
       color: var(--text-muted);
     }
@@ -89,7 +89,7 @@
     color: var(--text-normal);
     font-size: var(--font-ui-small);
     cursor: pointer;
-    
+
     &:focus {
       outline: none;
       border-color: var(--color-accent);

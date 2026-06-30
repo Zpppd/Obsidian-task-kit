@@ -264,7 +264,26 @@ export class TimeTrackingSettingsTab extends PluginSettingTab {
 	// ==================== 扫描目录 ====================
 
 	private renderScanSection(el: HTMLElement): void {
-		el.createEl('h2', { text: '📁 扫描目录' });
+		// 标题栏：左侧标题 + 右侧刷新按钮
+		const headingEl = el.createDiv();
+		headingEl.style.display = 'flex';
+		headingEl.style.alignItems = 'center';
+		headingEl.style.justifyContent = 'space-between';
+		headingEl.style.marginBottom = '16px';
+		headingEl.createEl('h2', { text: '📁 扫描目录' });
+		const refreshBtn = headingEl.createEl('button', {
+			text: '🔄',
+			title: '刷新任务面板',
+		});
+		refreshBtn.style.cssText =
+			'width:28px;height:28px;border-radius:50%;border:1px solid var(--background-modifier-border);' +
+			'background:var(--background-primary);cursor:pointer;font-size:14px;' +
+			'display:flex;align-items:center;justify-content:center;padding:0;line-height:1';
+		refreshBtn.addEventListener('click', async () => {
+			await this.plugin.taskManagerService.refreshAllTasks();
+			new Notice('✅ 任务面板已刷新');
+		});
+
 
 		const listEl = el.createDiv();
 		const renderList = () => {
@@ -295,6 +314,7 @@ export class TimeTrackingSettingsTab extends PluginSettingTab {
 					if (input.value.trim()) {
 						this.plugin.settings.scanDirectories[i] = input.value.trim();
 						await this.plugin.saveSettings();
+						await this.plugin.taskManagerService.refreshAllTasks();
 					}
 				});
 				const del = item.createEl('button', { text: '✕' });
@@ -303,10 +323,11 @@ export class TimeTrackingSettingsTab extends PluginSettingTab {
 				del.style.background = 'none';
 				del.style.color = 'var(--text-muted)';
 				del.addEventListener('click', async () => {
-					this.plugin.settings.scanDirectories.splice(i, 1);
-					await this.plugin.saveSettings();
-					renderList();
-				});
+						this.plugin.settings.scanDirectories.splice(i, 1);
+						await this.plugin.saveSettings();
+						await this.plugin.taskManagerService.refreshAllTasks();
+						renderList();
+					});
 			});
 		};
 		renderList();
@@ -328,7 +349,8 @@ export class TimeTrackingSettingsTab extends PluginSettingTab {
 				b.setButtonText('清空').onClick(async () => {
 					this.plugin.settings.scanDirectories = [];
 					await this.plugin.saveSettings();
-					renderList();
+						await this.plugin.taskManagerService.refreshAllTasks();
+						renderList();
 				}),
 			);
 	}

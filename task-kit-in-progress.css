@@ -1,135 +1,108 @@
 /*
- * Task Master Pro - 进行中任务样式增强
- * 
+ * Task Kit - 进行中任务样式增强
+ *
  * 使用说明：
  * 1. 将此文件复制到 Obsidian 仓库的 .obsidian/snippets/ 目录
  * 2. 打开 Obsidian 设置 → 外观 → CSS 代码片段
  * 3. 找到 "task-kit-in-progress" 并启用它
  * 4. 刷新页面即可看到效果
- * 
+ *
  * 此样式同时适用于：
- * - Task Master Pro 任务面板中的 checkbox
- * - Markdown 编辑器中的任务列表（编辑模式）
+ * - Task Kit 任务面板中的 checkbox（.task-checkbox-input.checkbox-progress）
+ * - Markdown 编辑器中的任务列表（编辑模式 / CodeMirror 6）
  * - 阅读模式下的任务预览
+ *
+ * 技术说明：
+ * 使用 background: linear-gradient(...) 实现半填充效果，而非 ::after 伪元素。
+ * 因为 <input> 是"替换元素"（replaced element），Electron/Chromium 对
+ * 替换元素上的 ::after 伪元素支持不完整，会导致样式不生效。
+ *
+ * v2 更新：移除 ::after 方案，改用 background gradient（2026-06-29）
  */
 
 /* ========================================
    进行中任务的 Checkbox 样式
-   参考 obsidian-things 主题实现
-   使用半填充效果，视觉上表示"进行中"状态
+   使用左半填充渐变，视觉上表示"进行中"状态
    ======================================== */
 
 /* --- 任务面板中的进行中样式 --- */
-/* 注意：任务面板中的进行中checkbox没有checked属性，所以不使用:checked */
+/* Task Kit 插件渲染的 checkbox，class="task-checkbox-input checkbox-progress" */
+
 .task-checkbox-input.checkbox-progress {
-  background-image: none !important;
-  background-color: transparent !important;
-  position: relative !important;
-  overflow: hidden !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
   accent-color: transparent !important;
   border: 2px solid var(--interactive-accent) !important;
-  border-radius: var(--checkbox-radius, 30%) !important;
-  -webkit-appearance: none !important;
-  appearance: none !important;
+  border-radius: var(--checkbox-radius, 4px) !important;
+  background: linear-gradient(
+    to right,
+    var(--interactive-accent) 50%,
+    transparent 50%
+  ) !important;
+  background-image: linear-gradient(
+    to right,
+    var(--interactive-accent) 50%,
+    transparent 50%
+  ) !important;
   width: 16px !important;
   height: 16px !important;
-}
-
-.task-checkbox-input.checkbox-progress:after {
-  top: 0 !important;
-  left: 0 !important;
-  content: ' ' !important;
-  display: block !important;
-  position: absolute !important;
-  background-color: var(--interactive-accent) !important;
-  width: calc(50% - 0.5px) !important;
-  height: 100% !important;
-  -webkit-mask-image: none !important;
-  mask-image: none !important;
+  position: relative !important;
+  overflow: hidden !important;
 }
 
 /* --- Markdown 编辑器中的进行中样式（CodeMirror 6）--- */
-/* 基于实际 DOM 结构：input.task-list-item-checkbox[data-task='/'] */
-/* 注意：编辑器中的checkbox有checked属性 */
+/* Obsidian 原生 checkbox: input.task-list-item-checkbox[data-task='/'] */
 
-/* 方法1：直接使用 data-task 属性选择器（不依赖 :checked） */
 input.task-list-item-checkbox[data-task='/'] {
-  background-image: none !important;
-  background-color: transparent !important;
-  position: relative !important;
-  overflow: hidden !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
   accent-color: transparent !important;
   border: 2px solid var(--interactive-accent) !important;
-  border-radius: var(--checkbox-radius, 30%) !important;
-  -webkit-appearance: none !important;
-  appearance: none !important;
+  border-radius: var(--checkbox-radius, 4px) !important;
+  background: linear-gradient(
+    to right,
+    var(--interactive-accent) 50%,
+    transparent 50%
+  ) !important;
+  background-image: linear-gradient(
+    to right,
+    var(--interactive-accent) 50%,
+    transparent 50%
+  ) !important;
+  position: relative !important;
+  overflow: hidden !important;
 }
 
-input.task-list-item-checkbox[data-task='/']:after {
-  top: 0 !important;
-  left: 0 !important;
-  content: ' ' !important;
-  display: block !important;
-  position: absolute !important;
-  background-color: var(--interactive-accent) !important;
-  width: calc(50% - 0.5px) !important;
-  height: 100% !important;
-  -webkit-mask-image: none !important;
-  mask-image: none !important;
-}
-
-/* 方法2：备用选择器 - 通过父级 label */
+/* 备用选择器 - 通过父级 label */
 label.task-list-label:has(input[data-task='/']) input.task-list-item-checkbox {
-  background-image: none !important;
-  background-color: transparent !important;
-  position: relative !important;
-  overflow: hidden !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
   accent-color: transparent !important;
   border: 2px solid var(--interactive-accent) !important;
-  border-radius: var(--checkbox-radius, 30%) !important;
-  -webkit-appearance: none !important;
-  appearance: none !important;
-}
-
-label.task-list-label:has(input[data-task='/']) input.task-list-item-checkbox:after {
-  top: 0 !important;
-  left: 0 !important;
-  content: ' ' !important;
-  display: block !important;
-  position: absolute !important;
-  background-color: var(--interactive-accent) !important;
-  width: calc(50% - 0.5px) !important;
-  height: 100% !important;
-  -webkit-mask-image: none !important;
-  mask-image: none !important;
+  border-radius: var(--checkbox-radius, 4px) !important;
+  background: linear-gradient(
+    to right,
+    var(--interactive-accent) 50%,
+    transparent 50%
+  ) !important;
 }
 
 /* --- 阅读模式中的进行中样式 --- */
 .markdown-preview-view ul > li.task-list-item[data-task='/'] > input[type='checkbox'],
+.markdown-reading-view ul > li.task-list-item[data-task='/'] > input[type='checkbox'],
 .markdown-preview-view .task-list-item-checkbox[data-task='/'] {
-  background-image: none !important;
-  background-color: transparent !important;
-  position: relative !important;
-  overflow: hidden !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
   accent-color: transparent !important;
   border: 2px solid var(--interactive-accent) !important;
-  border-radius: var(--checkbox-radius, 30%) !important;
-  -webkit-appearance: none !important;
-  appearance: none !important;
-}
-
-.markdown-preview-view ul > li.task-list-item[data-task='/'] > input[type='checkbox']:after,
-.markdown-preview-view .task-list-item-checkbox[data-task='/']:after {
-  top: 0 !important;
-  left: 0 !important;
-  content: ' ' !important;
-  display: block !important;
-  position: absolute !important;
-  background-color: var(--interactive-accent) !important;
-  width: calc(50% - 0.5px) !important;
-  height: 100% !important;
-  -webkit-mask-image: none !important;
-  mask-image: none !important;
+  border-radius: var(--checkbox-radius, 4px) !important;
+  background: linear-gradient(
+    to right,
+    var(--interactive-accent) 50%,
+    transparent 50%
+  ) !important;
+  position: relative !important;
+  overflow: hidden !important;
 }
 
 /* --- 可选：为进行中的任务文本添加视觉提示 --- */

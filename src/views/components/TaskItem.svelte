@@ -21,6 +21,8 @@
     }
   }
 
+  // ✅ 进行中状态用 inline style 实现半填充（不依赖外部 CSS 加载时序）
+
   // ✅ 格式化时间追踪信息（使用 TimeTrackerService）
   function formatTimeTracking(): string {
     if (!task.timeTracking) {
@@ -52,13 +54,26 @@
 
 <div class="task-item" on:click={handleTaskClick} style="display: flex; align-items: center; gap: 8px;">
   <div class="task-checkbox" style="flex-shrink: 0; display: flex; align-items: center;">
-    <input
-      type="checkbox"
-      checked={task.status === 'completed'}
-      on:click={handleCheckboxClick}
-      class="task-checkbox-input {getCheckboxClass()}"
-      style="width: 16px; height: 16px; margin: 0;"
-    />
+    {#if task.status === 'progress'}
+      <!-- 进行中：用 span 代替 input，避免 Electron 对 checkbox 上 appearance:none 的渲染 bug -->
+      <span
+        class="task-checkbox-progress"
+        on:click={handleCheckboxClick}
+        role="checkbox"
+        aria-checked="false"
+        aria-label="进行中"
+        tabindex="0"
+        on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(task); } }}
+      ></span>
+    {:else}
+      <input
+        type="checkbox"
+        checked={task.status === 'completed'}
+        on:click={handleCheckboxClick}
+        class="task-checkbox-input {getCheckboxClass()}"
+        style="width:16px;height:16px;margin:0;cursor:pointer"
+      />
+    {/if}
   </div>
   
   <div class="task-content" style="flex: 1; min-width: 0;">
@@ -106,18 +121,47 @@
     }
   }
 
-  /* Checkbox 状态样式 */
+  /* Checkbox 状态样式
+   * - pending/completed: 原生 <input type="checkbox">
+   * - progress: <span> 模拟，避免 Electron 对 input 上 appearance:none 的渲染 bug
+   */
+  .task-checkbox-input {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
   .checkbox-pending {
     opacity: 1;
   }
 
-  .checkbox-progress {
-    accent-color: var(--color-blue);  /* 进行中的 checkbox 显示蓝色 */
+  .checkbox-completed {
+    accent-color: var(--color-green);
+    opacity: 0.6;
   }
 
-  .checkbox-completed {
-    accent-color: var(--color-green);  /* 已完成的 checkbox 显示绿色 */
-    opacity: 0.6;  /* 稍微透明，表示已完成 */
+  /* 进行中：span 模拟 checkbox，左半填充渐变 */
+  .task-checkbox-progress {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--interactive-accent);
+    border-radius: var(--checkbox-radius, 4px);
+    background: linear-gradient(
+      to right,
+      var(--interactive-accent) 50%,
+      transparent 50%
+    );
+    cursor: pointer;
+    flex-shrink: 0;
+    box-sizing: border-box;
+
+    &:hover {
+      border-color: var(--interactive-accent-hover, var(--interactive-accent));
+      box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb, 0, 122, 255), 0.2);
+    }
   }
 
   .task-text {

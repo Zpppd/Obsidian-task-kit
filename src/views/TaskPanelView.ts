@@ -189,6 +189,22 @@ export class TaskPanelView extends ItemView {
   }
 
   /**
+   * 手动刷新（供子组件按钮调用）
+   * 强制从磁盘重新加载所有任务，适用于：
+   * - 用户点击刷新按钮
+   * - 白名单修改后的强制同步
+   */
+  handleRefresh = async (): Promise<void> => {
+    try {
+      await this.taskManagerService.refreshAllTasks();
+      // refreshAllTasks 会触发 'cache-updated' 事件，事件订阅自动调用 updateView()
+    } catch (error) {
+      console.error('[TaskPanelView] Failed to refresh:', error);
+      new Notice('刷新失败，请查看控制台');
+    }
+  };
+
+  /**
    * 检查任务数据是否真正发生变化
    * ✅ 优化：避免不必要的视图重建，提升性能
    * 

@@ -1,6 +1,8 @@
 <script lang="ts">
+  import { App } from 'obsidian';
   import type { Task } from '../../types/task';
   import type { TimeTrackerService } from '../../services/TimeTrackerService';
+  import type { TaskParser } from '../../parser/TaskParser';
   import TaskItem from './TaskItem.svelte';
   import FilterBar from './FilterBar.svelte';
 
@@ -9,6 +11,9 @@
   export let onClick: (task: Task) => void;
   export let onFilterChange: (filterType: string, value: any) => void;
   export let timeTrackerService: TimeTrackerService;
+  export let app: App;
+  export let taskParser: TaskParser;
+  export let enableTimeTracking: boolean;
   
   // ✅ 支持从父组件传入初始筛选状态
   export let initialSearchText: string = '';
@@ -119,6 +124,9 @@
                 {onToggle}
                 {onClick}
                 {timeTrackerService}
+                {app}
+                {taskParser}
+                {enableTimeTracking}
               />
             {/each}
           </div>

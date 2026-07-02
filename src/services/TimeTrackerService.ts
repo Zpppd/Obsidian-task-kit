@@ -147,6 +147,52 @@ export class TimeTrackerService {
 		return moment();
 	}
 
+	// ==================== 直接修改追踪时间（跳过 toggle 流程） ====================
+
+	/**
+	 * 直接设置任务的时间追踪，跳过三态 toggle 流程
+	 *
+	 * 适用场景：
+	 * - 用户忘记及时点击 checkbox，事后补录开始/结束时间
+	 * - 用户需要修正错误的时间记录
+	 *
+	 * @param task 任务对象
+	 * @param startTime 开始时间（必填）
+	 * @param endTime 结束时间（可选，有则设为 completed，无则设为 progress）
+	 */
+	async updateTrackingTime(
+		task: Task,
+		startTime: moment.Moment,
+		endTime?: moment.Moment,
+	): Promise<void> {
+		const durationMinutes = endTime
+			? this.calculateDuration(startTime, endTime)
+			: undefined;
+
+		task.status = endTime ? TaskStatus.Completed : TaskStatus.Progress;
+		task.timeTracking = {
+			startTime: startTime.clone(),
+			endTime: endTime?.clone(),
+			durationMinutes,
+		};
+
+		const newLine = this.buildSurgicalLine(task);
+		await this.taskParser.updateTaskLine(task, newLine);
+		task.originalLine = newLine;
+	}
+
+	/**
+	 * 清除任务的时间追踪，回到 pending 状态
+	 */
+	async clearTrackingTime(task: Task): Promise<void> {
+		task.status = TaskStatus.Pending;
+		task.timeTracking = undefined;
+
+		const newLine = this.buildSurgicalLine(task);
+		await this.taskParser.updateTaskLine(task, newLine);
+		task.originalLine = newLine;
+	}
+
 	// ==================== 显示文本（用于面板渲染） ====================
 
 	formatDisplayText(task: Task, format: string = 'range'): string {

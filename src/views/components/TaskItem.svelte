@@ -1,11 +1,19 @@
 <script lang="ts">
+  import { App, Menu } from 'obsidian';
+  import moment from 'moment';
   import type { Task } from '../../types/task';
   import type { TimeTrackerService } from '../../services/TimeTrackerService';
-  
+  import { ReminderQuickSet } from '../../utils/ReminderQuickSet';
+  import { TimeTrackingEditModal } from '../../modals/TimeTrackingEditModal';
+  import type { TaskParser } from '../../parser/TaskParser';
+
   export let task: Task;
   export let onToggle: (task: Task) => void;
   export let onClick: (task: Task) => void;
-  export let timeTrackerService: TimeTrackerService; // ✅ 添加 TimeTrackerService prop
+  export let timeTrackerService: TimeTrackerService;
+  export let app: App;
+  export let taskParser: TaskParser;
+  export let enableTimeTracking: boolean;
 
   // ✅ 根据任务状态返回 checkbox 的 CSS 类
   function getCheckboxClass(): string {
@@ -50,9 +58,58 @@
   function handleTaskClick() {
     onClick(task);
   }
+
+  // 处理右键菜单
+  function handleContextMenu(event: MouseEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const menu = new Menu();
+
+    // ── 设置提醒时间 ──
+    menu.addItem(item => {
+      item.setTitle('设置提醒时间')
+        .setIcon('bell');
+
+      const submenu = item.setSubmenu();
+
+      const presets = ReminderQuickSet.getPresets(moment());
+      presets.forEach(preset => {
+        submenu.addItem(subItem => {
+          subItem.setTitle(preset.label)
+            .onClick(async () => {
+              await ReminderQuickSet.setReminderTime(task, preset.time, taskParser);
+            });
+        });
+      });
+
+      submenu.addSeparator();
+
+      submenu.addItem(subItem => {
+        subItem.setTitle('清除提醒')
+          .onClick(async () => {
+            await ReminderQuickSet.setReminderTime(task, null, taskParser);
+          });
+      });
+    });
+
+    // ── 修改追踪时间（仅时间追踪开启时显示） ──
+    if (enableTimeTracking) {
+      menu.addItem(item => {
+        item.setTitle('修改追踪时间')
+          .setIcon('clock')
+          .onClick(() => {
+            new TimeTrackingEditModal(app, task, timeTrackerService).open();
+          });
+      });
+    }
+
+    menu.showAtMouseEvent(event);
+  }
 </script>
 
-<div class="task-item" on:click={handleTaskClick} style="display: flex; align-items: center; gap: 8px;">
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div class="task-item" on:click={handleTaskClick} on:contextmenu={handleContextMenu} on:keydown={(e) => { if (e.key === 'Enter') handleTaskClick(); }} role="button" tabindex="0" style="display: flex; align-items: center; gap: 8px;">
   <div class="task-checkbox" style="flex-shrink: 0; display: flex; align-items: center;">
     {#if task.status === 'progress'}
       <!-- 进行中：用 span 代替 input，避免 Electron 对 checkbox 上 appearance:none 的渲染 bug -->

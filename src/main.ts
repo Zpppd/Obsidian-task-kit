@@ -1,4 +1,4 @@
-import { Plugin, MarkdownView, Notice } from 'obsidian';
+import { Plugin, MarkdownView, Notice, Menu, TFile } from 'obsidian';
 import moment from 'moment';
 import { TaskParser } from './parser/TaskParser';
 import { TimeTrackerService } from './services/TimeTrackerService';
@@ -8,6 +8,8 @@ import { TaskPanelView, TASK_PANEL_VIEW_TYPE } from './views/TaskPanelView';
 import type { Task } from './types/task';
 import { DEFAULT_SETTINGS, type PluginSettings } from './types/settings';
 import { TimeTrackingSettingsTab } from './settings/TimeTrackingSettingsTab';
+import { ReminderQuickSet } from './utils/ReminderQuickSet';
+import { TimeTrackingEditModal } from './modals/TimeTrackingEditModal';
 
 export default class TaskMasterProPlugin extends Plugin {
 	taskParser!: TaskParser;
@@ -32,6 +34,7 @@ export default class TaskMasterProPlugin extends Plugin {
 		);
 
 		this.registerEditorCheckboxInterceptor();
+		this.registerEditorContextMenu();
 
 		this.registerView(
 			TASK_PANEL_VIEW_TYPE,
@@ -235,6 +238,80 @@ export default class TaskMasterProPlugin extends Plugin {
 					registerViewInterceptor(view);
 				}
 			})
+		);
+	}
+
+	/**
+	 * 注册编辑器右键菜单拦截器
+	 *
+	 * 在编辑器中右键单击任务行时，在 Obsidian 原生菜单中追加：
+	 * - 设置提醒时间（子菜单：快捷预设 + 清除）
+	 * - 修改追踪时间（需 enableTimeTracking 开启）
+	 */
+	private registerEditorContextMenu() {
+		this.registerEvent(
+			this.app.workspace.on('editor-menu', (menu, editor, view) => {
+				// 只在 Markdown 编辑器中显示
+				if (!(view instanceof MarkdownView)) return;
+
+				const file = view.file;
+				if (!file) return;
+
+				// 获取光标所在行
+				const cursor = editor.getCursor();
+				const lineNumber = cursor.line;
+				const line = editor.getLine(lineNumber);
+
+				// 检查是否为任务行
+				const taskMatch = line.match(/^(\s*-\s*\[)(.)(\]\s*)(.*)$/);
+				if (!taskMatch) return;
+
+				// 尝试解析任务（使用 TaskParser 获取完整 Task 对象）
+				const parseResult = this.taskParser.parseLine(line, file, lineNumber);
+				const task = parseResult.task;
+				if (!task) return;
+
+				// ── 分隔线 ──
+				menu.addSeparator();
+
+				// ── 设置提醒时间 ──
+				menu.addItem(item => {
+					item.setTitle('设置提醒时间')
+						.setIcon('bell');
+
+					const submenu = item.setSubmenu();
+
+					const presets = ReminderQuickSet.getPresets(moment());
+					presets.forEach(preset => {
+						submenu.addItem(subItem => {
+							subItem.setTitle(preset.label)
+								.onClick(async () => {
+									await ReminderQuickSet.setReminderTime(task, preset.time, this.taskParser);
+								});
+						});
+					});
+
+					submenu.addSeparator();
+
+					submenu.addItem(subItem => {
+						subItem.setTitle('清除提醒')
+							.onClick(async () => {
+								await ReminderQuickSet.setReminderTime(task, null, this.taskParser);
+							});
+					});
+				});
+
+				// ── 修改追踪时间（仅时间追踪开启时显示） ──
+				if (this.settings.enableTimeTracking) {
+					menu.addItem(item => {
+						item.setTitle('修改追踪时间')
+							.setIcon('clock')
+							.onClick(() => {
+								new TimeTrackingEditModal(this.app, task, this.timeTrackerService).open();
+							});
+					});
+				}
+			}),
 		);
 	}
 

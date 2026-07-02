@@ -6,6 +6,8 @@ export interface ReminderCallbacks {
 	onSnooze: (minutes: number) => Promise<void>;
 	onMute: () => void;
 	onOpenFile: () => void;
+	/** 弹窗关闭时回调（无论通过哪个按钮关闭） */
+	onClose?: () => void;
 }
 
 /**
@@ -95,5 +97,7 @@ export class ReminderModal extends Modal {
 	override onClose() {
 		const { contentEl } = this;
 		contentEl.empty();
+		// 通知调度器弹窗已关闭
+		this.callbacks.onClose?.();
 	}
 }

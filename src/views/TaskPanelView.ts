@@ -74,6 +74,9 @@ export class TaskPanelView extends ItemView {
           onClick: this.handleTaskClick.bind(this),
           onFilterChange: this.handleFilterChange.bind(this),
           timeTrackerService: this.timeTrackerService,
+          app: this.app,
+          taskParser: this.taskParser,
+          enableTimeTracking: this.plugin.settings.enableTimeTracking,
           // ✅ 传递初始筛选状态
           initialSearchText: this.filterState.searchText,
           initialStatusFilter: this.filterState.statusFilter
@@ -386,6 +389,9 @@ export class TaskPanelView extends ItemView {
           onClick: this.handleTaskClick.bind(this),
           onFilterChange: this.handleFilterChange.bind(this),
           timeTrackerService: this.timeTrackerService,
+          app: this.app,
+          taskParser: this.taskParser,
+          enableTimeTracking: this.plugin.settings.enableTimeTracking,
           // ✅ 传递筛选状态
           initialSearchText: this.filterState.searchText,
           initialStatusFilter: this.filterState.statusFilter

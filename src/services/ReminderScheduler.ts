@@ -9,7 +9,9 @@ const LOG = '[ReminderScheduler]';
 
 export class ReminderScheduler {
 	private timer: ReturnType<typeof setTimeout> | null = null;
-	private notifiedKeys: Set<string> = new Set();
+	/** 已通知的任务追踪：key=taskId, value={content} 用于行号变化后的内容匹配 */
+	private notifiedKeys: Map<string, { content: string }> = new Map();
+	private activeModalTaskId: string | null = null;
 
 	constructor(private plugin: TaskMasterProPlugin) {}
 
@@ -66,27 +68,52 @@ export class ReminderScheduler {
 		const tasks = this.plugin.taskManagerService.getAllTasksFromCache();
 		this.cleanupNotifiedKeys(tasks);
 		const nearest = this.findNearest(tasks);
+
+		// [DIAGNOSTIC] 记录每次扫描结果
+		const tasksWithReminder = tasks.filter(t => !!t.reminderTime && t.status !== TaskStatus.Completed).length;
+		console.log(LOG,
+			`🔍 scheduleNext | cache:${tasks.length} tasks | withReminder:${tasksWithReminder} | notified:${this.notifiedKeys.size} | nearest:${nearest ? `${nearest.task.content.slice(0, 30)} @ ${nearest.time.format('HH:mm')}` : 'none'}`,
+		);
+
 		if (!nearest) return;
 
 		const delayMs = nearest.time.diff(moment());
 		if (delayMs <= 0) {
 			this.doNotify(nearest.task);
-			this.scheduleNext();
+			// 延迟再扫描下一个，给移动端渲染缓冲（避免多 Modal 瞬间堆叠）
+			setTimeout(() => this.scheduleNext(), 300);
 		} else {
-			const safeDelay = Math.min(delayMs, 86_400_000);
+			console.log(LOG, `⏱️ Next reminder in ${Math.round(delayMs / 1000)}s: ${nearest.task.content.slice(0, 30)}`);
+			// ✅ 定时器回调改为重新扫描，而非直接通知陈旧闭包数据
 			this.timer = setTimeout(() => {
-				this.doNotify(nearest.task);
 				this.scheduleNext();
-			}, safeDelay);
+			}, delayMs);
 		}
 	}
 
 	private cleanupNotifiedKeys(tasks: Task[]): void {
 		const taskMap = new Map<string, Task>();
 		for (const t of tasks) taskMap.set(t.id, t);
-		for (const key of this.notifiedKeys) {
-			const task = taskMap.get(key);
+
+		for (const [key, info] of this.notifiedKeys) {
+			let task = taskMap.get(key);
+
+			// ✅ 精确 ID 匹配失败 → 尝试按文件+内容匹配（行号变化导致 ID 改变）
+			if (!task) {
+				const filePath = key.substring(0, key.lastIndexOf(':'));
+				task = tasks.find(t => t.file.path === filePath && t.content === info.content);
+				if (task) {
+					// 找到同一任务（新行号）→ 更新 notifiedKeys 中的 key
+					this.notifiedKeys.delete(key);
+					this.notifiedKeys.set(task.id, info);
+					console.log(LOG, `🔧 Updated notified key (line changed): ${key} → ${task.id}`);
+				}
+			}
+
 			if (!task || !task.reminderTime || task.status === TaskStatus.Completed) {
+				// [DIAGNOSTIC] 记录防重键被清除的原因
+				const reason = !task ? 'task gone' : !task.reminderTime ? 'no reminder' : 'completed';
+				console.log(LOG, `🔴 NOTIFIED KEY REMOVED [${reason}]: ${key}`);
 				this.notifiedKeys.delete(key);
 			}
 		}
@@ -108,11 +135,38 @@ export class ReminderScheduler {
 	}
 
 	private doNotify(task: Task) {
-		this.notifiedKeys.add(task.id);
+		// ✅ 时效性校验：从缓存重新获取最新数据，避免陈旧闭包/行号变化等问题
+		const freshTasks = this.plugin.taskManagerService.getAllTasksFromCache();
+		const fresh = freshTasks.find(t => t.id === task.id);
+
+		if (!fresh) {
+			console.log(LOG, `⏭️ SKIP notify (task no longer exists): ${task.id}`);
+			return;
+		}
+		if (!fresh.reminderTime) {
+			console.log(LOG, `⏭️ SKIP notify (reminder removed): ${task.id}`);
+			return;
+		}
+		if (fresh.status === TaskStatus.Completed) {
+			console.log(LOG, `⏭️ SKIP notify (already completed): ${task.id}`);
+			return;
+		}
+		if (fresh.isMuted) {
+			console.log(LOG, `⏭️ SKIP notify (muted): ${task.id}`);
+			return;
+		}
+		if (fresh.reminderTime.isAfter(moment())) {
+			console.log(LOG, `⏭️ SKIP notify (not yet due, ${fresh.reminderTime.format('HH:mm')} > ${moment().format('HH:mm')}): ${task.id}`);
+			return;
+		}
+
+		// [DIAGNOSTIC] 记录实际通知触发
+		console.log(LOG, `🔔 NOTIFYING: ${fresh.id} | ${fresh.content.slice(0, 40)}`);
+		this.notifiedKeys.set(fresh.id, { content: fresh.content });
 		const { useSystemNotification, useBuiltinNotification } = this.plugin.settings.reminder;
-		if (useSystemNotification) this.trySystemNotification(task);
-		if (useBuiltinNotification) this.showReminderModal(task);
-		if (!useSystemNotification && !useBuiltinNotification) this.showReminderModal(task);
+		if (useSystemNotification) this.trySystemNotification(fresh);
+		if (useBuiltinNotification) this.showReminderModal(fresh);
+		if (!useSystemNotification && !useBuiltinNotification) this.showReminderModal(fresh);
 	}
 
 	private trySystemNotification(task: Task): void {
@@ -143,7 +197,16 @@ export class ReminderScheduler {
 	}
 
 	private showReminderModal(task: Task) {
-		new ReminderModal(
+		// 同一任务的弹窗已存在 → 跳过
+		if (this.activeModalTaskId === task.id) {
+			console.log(LOG, `⏭️ SKIP modal (already shown for this task): ${task.id}`);
+			return;
+		}
+
+		// [DIAGNOSTIC] 记录 Modal 创建
+		console.log(LOG, `🪟 Showing modal for: ${task.id}`);
+		this.activeModalTaskId = task.id;
+		const modal = new ReminderModal(
 			this.plugin.app,
 			task,
 			{
@@ -151,15 +214,23 @@ export class ReminderScheduler {
 				onSnooze: async (minutes: number) => await this.handleSnooze(task, minutes),
 				onMute: () => this.handleMute(task),
 				onOpenFile: () => this.handleOpenFile(task),
+				onClose: () => {
+					this.activeModalTaskId = null;
+				},
 			},
 			this.plugin.settings.reminder.snoozePresets,
-		).open();
+		);
+		modal.open();
 	}
 
 	private async handleDone(task: Task) {
 		try {
 			const fresh = await this.getFreshTask(task);
-			if (!fresh) { new Notice('任务已不存在'); return; }
+			if (!fresh) {
+				new Notice('任务已不存在');
+				this.scheduleNext();
+				return;
+			}
 			if (fresh.status === TaskStatus.Progress) {
 				await this.plugin.timeTrackerService.toggleTaskStatus(fresh);
 			} else if (fresh.status === TaskStatus.Pending) {
@@ -169,28 +240,33 @@ export class ReminderScheduler {
 				await this.plugin.taskParser.updateTaskLine(fresh, newLine);
 			}
 			await this.plugin.taskManagerService.refreshSingleFile(fresh.file);
+			// refreshSingleFile 已触发 cache-updated → scheduleNext()，无需显式调用
 			new Notice(`✅ 已完成: ${fresh.content}`);
 		} catch (error) {
 			console.error(LOG, 'handleDone failed:', error);
 			new Notice('标记完成失败');
+			this.scheduleNext();
 		}
-		this.scheduleNext();
 	}
 
 	private async handleSnooze(task: Task, minutes: number) {
 		try {
-			if (!task.reminderTime) return;
+			if (!task.reminderTime) {
+				this.scheduleNext();
+				return;
+			}
 			task.reminderTime = moment().add(minutes, 'minutes');
 			this.notifiedKeys.delete(task.id);
 			const newLine = this.plugin.taskParser.buildTaskLine(task);
 			await this.plugin.taskParser.updateTaskLine(task, newLine);
 			await this.plugin.taskManagerService.refreshSingleFile(task.file);
+			// refreshSingleFile 已触发 cache-updated → scheduleNext()，无需显式调用
 			new Notice(`⏰ 已推迟 ${minutes} 分钟`);
 		} catch (error) {
 			console.error(LOG, 'handleSnooze failed:', error);
 			new Notice('稍后提醒失败');
+			this.scheduleNext();
 		}
-		this.scheduleNext();
 	}
 
 	private handleMute(task: Task) {

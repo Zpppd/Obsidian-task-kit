@@ -17,11 +17,11 @@
   
   // ✅ 支持从父组件传入初始筛选状态
   export let initialSearchText: string = '';
-  export let initialStatusFilter: 'all' | 'pending' | 'progress' | 'completed' = 'all';
+  export let initialStatusFilter: 'all' | 'pending' | 'progress' | 'completed' | 'incomplete' = 'all';
 
   // 筛选状态 - 使用父组件传入的初始值
   let searchText = initialSearchText;
-  let statusFilter: 'all' | 'pending' | 'progress' | 'completed' = initialStatusFilter;
+  let statusFilter: 'all' | 'pending' | 'progress' | 'completed' | 'incomplete' = initialStatusFilter;
   
   // ✅ 声明filteredTasks变量
   let filteredTasks: Task[] = [];
@@ -50,6 +50,7 @@
         if (statusFilter === 'pending' && task.status !== 'pending') return false;
         if (statusFilter === 'progress' && task.status !== 'progress') return false;
         if (statusFilter === 'completed' && task.status !== 'completed') return false;
+        if (statusFilter === 'incomplete' && task.status === 'completed') return false;
       }
       
       // 搜索筛选

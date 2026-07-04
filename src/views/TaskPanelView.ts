@@ -20,7 +20,7 @@ export class TaskPanelView extends ItemView {
   // ✅ 新增：保存用户的筛选状态（避免组件重建时丢失）
   private filterState: {
     searchText: string;
-    statusFilter: 'all' | 'pending' | 'progress' | 'completed';
+    statusFilter: 'all' | 'pending' | 'progress' | 'completed' | 'incomplete';
   } = {
     searchText: '',
     statusFilter: 'all'

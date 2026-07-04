@@ -1,6 +1,6 @@
 <script lang="ts">
   export let searchText: string = '';
-  export let statusFilter: 'all' | 'pending' | 'progress' | 'completed' = 'all';
+  export let statusFilter: 'all' | 'pending' | 'progress' | 'completed' | 'incomplete' = 'all';
 
   // 定义事件派发器
   import { createEventDispatcher } from 'svelte';
@@ -40,6 +40,7 @@
       <option value="pending">待办</option>
       <option value="progress">进行中</option>
       <option value="completed">已完成</option>
+      <option value="incomplete">未完成</option>
     </select>
   </div>
 </div>

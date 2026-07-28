@@ -77,6 +77,8 @@ export class TaskPanelView extends ItemView {
           app: this.app,
           taskParser: this.taskParser,
           enableTimeTracking: this.plugin.settings.enableTimeTracking,
+          reminderEnabled: this.plugin.settings.reminder.enabled,
+          onRefresh: this.refreshTasks.bind(this),
           // ✅ 传递初始筛选状态
           initialSearchText: this.filterState.searchText,
           initialStatusFilter: this.filterState.statusFilter
@@ -392,6 +394,8 @@ export class TaskPanelView extends ItemView {
           app: this.app,
           taskParser: this.taskParser,
           enableTimeTracking: this.plugin.settings.enableTimeTracking,
+          reminderEnabled: this.plugin.settings.reminder.enabled,
+          onRefresh: this.refreshTasks.bind(this),
           // ✅ 传递筛选状态
           initialSearchText: this.filterState.searchText,
           initialStatusFilter: this.filterState.statusFilter

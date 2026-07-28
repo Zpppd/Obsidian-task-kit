@@ -193,6 +193,31 @@ export class TimeTrackerService {
 		task.originalLine = newLine;
 	}
 
+	// ==================== 直接完成（跳过三态流转，不添加时间追踪标记） ====================
+
+	/**
+	 * 直接将任务标记为完成，跳过三态流转，不添加时间追踪标记。
+	 *
+	 * 适用场景：
+	 * - 用户通过右键菜单「完成任务」操作
+	 * - 任务无需记录耗时时快速完成
+	 */
+	async completeTaskWithoutTracking(task: Task): Promise<void> {
+		task.status = TaskStatus.Completed;
+		task.timeTracking = undefined;
+
+		let line = task.originalLine;
+
+		// 1. 替换 checkbox 状态为 [x]
+		line = line.replace(/^(\s*-\s*\[).(\])/, '$1x$2');
+
+		// 2. 移除时间追踪标记
+		line = line.replace(/\s*\(:[^)]+\)/g, '');
+
+		await this.taskParser.updateTaskLine(task, line);
+		task.originalLine = line;
+	}
+
 	// ==================== 显示文本（用于面板渲染） ====================
 
 	formatDisplayText(task: Task, format: string = 'range'): string {

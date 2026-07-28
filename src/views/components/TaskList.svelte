@@ -14,6 +14,8 @@
   export let app: App;
   export let taskParser: TaskParser;
   export let enableTimeTracking: boolean;
+  export let reminderEnabled: boolean;
+  export let onRefresh: () => void;
   
   // ✅ 支持从父组件传入初始筛选状态
   export let initialSearchText: string = '';
@@ -128,6 +130,8 @@
                 {app}
                 {taskParser}
                 {enableTimeTracking}
+                {reminderEnabled}
+                {onRefresh}
               />
             {/each}
           </div>

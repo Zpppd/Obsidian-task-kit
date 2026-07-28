@@ -1,4 +1,4 @@
-import { Plugin, MarkdownView, Notice, Menu, TFile } from 'obsidian';
+import { Plugin, MarkdownView, Notice, TFile } from 'obsidian';
 import moment from 'moment';
 import { TaskParser } from './parser/TaskParser';
 import { TimeTrackerService } from './services/TimeTrackerService';
@@ -8,8 +8,7 @@ import { TaskPanelView, TASK_PANEL_VIEW_TYPE } from './views/TaskPanelView';
 import type { Task } from './types/task';
 import { DEFAULT_SETTINGS, type PluginSettings } from './types/settings';
 import { TimeTrackingSettingsTab } from './settings/TimeTrackingSettingsTab';
-import { ReminderQuickSet } from './utils/ReminderQuickSet';
-import { TimeTrackingEditModal } from './modals/TimeTrackingEditModal';
+import { DateTimeEditModal } from './modals/DateTimeEditModal';
 
 export default class TaskMasterProPlugin extends Plugin {
 	taskParser!: TaskParser;
@@ -245,8 +244,9 @@ export default class TaskMasterProPlugin extends Plugin {
 	 * 注册编辑器右键菜单拦截器
 	 *
 	 * 在编辑器中右键单击任务行时，在 Obsidian 原生菜单中追加：
-	 * - 设置提醒时间（子菜单：快捷预设 + 清除）
-	 * - 修改追踪时间（需 enableTimeTracking 开启）
+	 * - 设置提醒时间（需 reminder.enabled 开启）→ 弹出 DateTimeEditModal
+	 * - 修改追踪时间（需 enableTimeTracking 开启）→ 弹出 DateTimeEditModal
+	 * - 完成任务（需 enableTimeTracking 开启 且 任务非 completed）→ 直接标记 [x]
 	 */
 	private registerEditorContextMenu() {
 		this.registerEvent(
@@ -274,32 +274,19 @@ export default class TaskMasterProPlugin extends Plugin {
 				// ── 分隔线 ──
 				menu.addSeparator();
 
-				// ── 设置提醒时间 ──
-				menu.addItem(item => {
-					item.setTitle('设置提醒时间')
-						.setIcon('bell');
-
-					const submenu = item.setSubmenu();
-
-					const presets = ReminderQuickSet.getPresets(moment());
-					presets.forEach(preset => {
-						submenu.addItem(subItem => {
-							subItem.setTitle(preset.label)
-								.onClick(async () => {
-									await ReminderQuickSet.setReminderTime(task, preset.time, this.taskParser);
-								});
-						});
-					});
-
-					submenu.addSeparator();
-
-					submenu.addItem(subItem => {
-						subItem.setTitle('清除提醒')
-							.onClick(async () => {
-								await ReminderQuickSet.setReminderTime(task, null, this.taskParser);
+				// ── 设置提醒时间（仅提醒开启时显示） ──
+				if (this.settings.reminder.enabled) {
+					menu.addItem(item => {
+						item.setTitle('设置提醒时间')
+							.setIcon('bell')
+							.onClick(() => {
+								new DateTimeEditModal(
+									this.app, task, 'reminder',
+									this.timeTrackerService, this.taskParser,
+								).open();
 							});
 					});
-				});
+				}
 
 				// ── 修改追踪时间（仅时间追踪开启时显示） ──
 				if (this.settings.enableTimeTracking) {
@@ -307,9 +294,28 @@ export default class TaskMasterProPlugin extends Plugin {
 						item.setTitle('修改追踪时间')
 							.setIcon('clock')
 							.onClick(() => {
-								new TimeTrackingEditModal(this.app, task, this.timeTrackerService).open();
+								new DateTimeEditModal(
+									this.app, task, 'tracking',
+									this.timeTrackerService, this.taskParser,
+								).open();
 							});
 					});
+
+					// ── 完成任务（非 completed 状态时显示） ──
+					if (task.status !== 'completed') {
+						menu.addItem(item => {
+							item.setTitle('完成任务')
+								.setIcon('checkmark')
+								.onClick(async () => {
+									try {
+										await this.timeTrackerService.completeTaskWithoutTracking(task);
+									} catch (error) {
+										console.error('[TaskKit] Failed to complete task without tracking:', error);
+										new Notice('操作失败，请重试');
+									}
+								});
+						});
+					}
 				}
 			}),
 		);

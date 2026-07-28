@@ -3,8 +3,7 @@
   import moment from 'moment';
   import type { Task } from '../../types/task';
   import type { TimeTrackerService } from '../../services/TimeTrackerService';
-  import { ReminderQuickSet } from '../../utils/ReminderQuickSet';
-  import { TimeTrackingEditModal } from '../../modals/TimeTrackingEditModal';
+  import { DateTimeEditModal } from '../../modals/DateTimeEditModal';
   import type { TaskParser } from '../../parser/TaskParser';
 
   export let task: Task;
@@ -14,6 +13,8 @@
   export let app: App;
   export let taskParser: TaskParser;
   export let enableTimeTracking: boolean;
+  export let reminderEnabled: boolean;
+  export let onRefresh: () => void;
 
   // ✅ 根据任务状态返回 checkbox 的 CSS 类
   function getCheckboxClass(): string {
@@ -66,32 +67,20 @@
 
     const menu = new Menu();
 
-    // ── 设置提醒时间 ──
-    menu.addItem(item => {
-      item.setTitle('设置提醒时间')
-        .setIcon('bell');
-
-      const submenu = item.setSubmenu();
-
-      const presets = ReminderQuickSet.getPresets(moment());
-      presets.forEach(preset => {
-        submenu.addItem(subItem => {
-          subItem.setTitle(preset.label)
-            .onClick(async () => {
-              await ReminderQuickSet.setReminderTime(task, preset.time, taskParser);
-            });
-        });
-      });
-
-      submenu.addSeparator();
-
-      submenu.addItem(subItem => {
-        subItem.setTitle('清除提醒')
-          .onClick(async () => {
-            await ReminderQuickSet.setReminderTime(task, null, taskParser);
+    // ── 设置提醒时间（仅提醒开启时显示） ──
+    if (reminderEnabled) {
+      menu.addItem(item => {
+        item.setTitle('设置提醒时间')
+          .setIcon('bell')
+          .onClick(() => {
+            new DateTimeEditModal(
+              app, task, 'reminder',
+              timeTrackerService, taskParser,
+              () => setTimeout(onRefresh, 200),
+            ).open();
           });
       });
-    });
+    }
 
     // ── 修改追踪时间（仅时间追踪开启时显示） ──
     if (enableTimeTracking) {
@@ -99,9 +88,29 @@
         item.setTitle('修改追踪时间')
           .setIcon('clock')
           .onClick(() => {
-            new TimeTrackingEditModal(app, task, timeTrackerService).open();
+            new DateTimeEditModal(
+              app, task, 'tracking',
+              timeTrackerService, taskParser,
+              () => setTimeout(onRefresh, 200),
+            ).open();
           });
       });
+
+      // ── 完成任务（非 completed 状态时显示） ──
+      if (task.status !== 'completed') {
+        menu.addItem(item => {
+          item.setTitle('完成任务')
+            .setIcon('checkmark')
+            .onClick(async () => {
+              try {
+                await timeTrackerService.completeTaskWithoutTracking(task);
+                onRefresh();
+              } catch (error) {
+                console.error('[TaskKit] Failed to complete task without tracking:', error);
+              }
+            });
+        });
+      }
     }
 
     menu.showAtMouseEvent(event);

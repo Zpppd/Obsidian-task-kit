@@ -13,8 +13,8 @@ export class ReminderScheduler {
 	private rescanTimeout: ReturnType<typeof setTimeout> | null = null;
 	/** 是否已停止（插件卸载）。停止后不再调度/弹窗，防止卸载后调度器复活 */
 	private stopped = false;
-	/** 已通知的任务追踪：key=taskId, value={content} 用于行号变化后的内容匹配 */
-	private notifiedKeys: Map<string, { content: string }> = new Map();
+	/** 已通知的任务追踪：key=taskId, value={content, notifiedTime} 用于行号变化匹配与提醒时间变化判定 */
+	private notifiedKeys: Map<string, { content: string; notifiedTime: number }> = new Map();
 	private activeModalTaskId: string | null = null;
 
 	constructor(private plugin: TaskKitPlugin) {}
@@ -132,6 +132,14 @@ export class ReminderScheduler {
 				}
 			}
 
+			// ✅ 提醒时间已改变（重新设置过提醒）→ 清除防重标记，允许再次通知
+			if (task && task.reminderTime && info.notifiedTime !== task.reminderTime.valueOf()) {
+				this.notifiedKeys.delete(key);
+				this.notifiedKeys.delete(task.id); // 覆盖行号变化后 re-key 的条目
+				this.debugLog(`🔄 NOTIFIED KEY REFRESHED (reminder changed): ${key}`);
+				continue;
+			}
+
 			if (!task || !task.reminderTime || task.status === TaskStatus.Completed) {
 				// [DIAGNOSTIC] 记录防重键被清除的原因
 				const reason = !task ? 'task gone' : !task.reminderTime ? 'no reminder' : 'completed';
@@ -184,7 +192,10 @@ export class ReminderScheduler {
 
 		// [DIAGNOSTIC] 记录实际通知触发
 		this.debugLog(`🔔 NOTIFYING: ${fresh.id} | ${fresh.content.slice(0, 40)}`);
-		this.notifiedKeys.set(fresh.id, { content: fresh.content });
+		this.notifiedKeys.set(fresh.id, {
+			content: fresh.content,
+			notifiedTime: fresh.reminderTime.valueOf(),
+		});
 		const { useSystemNotification, useBuiltinNotification } = this.plugin.settings.reminder;
 		if (useSystemNotification) this.trySystemNotification(fresh);
 		if (useBuiltinNotification) this.showReminderModal(fresh);

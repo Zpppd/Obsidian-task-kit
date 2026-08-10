@@ -9,6 +9,10 @@ const LOG = '[TaskKit:ReminderScheduler]';
 
 export class ReminderScheduler {
 	private timer: ReturnType<typeof setTimeout> | null = null;
+	/** 到期后 300ms 的二次扫描定时器（独立于 timer，stop 时需一并清理） */
+	private rescanTimeout: ReturnType<typeof setTimeout> | null = null;
+	/** 是否已停止（插件卸载）。停止后不再调度/弹窗，防止卸载后调度器复活 */
+	private stopped = false;
 	/** 已通知的任务追踪：key=taskId, value={content} 用于行号变化后的内容匹配 */
 	private notifiedKeys: Map<string, { content: string }> = new Map();
 	private activeModalTaskId: string | null = null;
@@ -23,6 +27,7 @@ export class ReminderScheduler {
 	}
 
 	start() {
+		this.stopped = false;
 		this.scheduleNext();
 		this.plugin.registerEvent(
 			this.plugin.taskManagerService.on('cache-updated', () => {
@@ -32,9 +37,14 @@ export class ReminderScheduler {
 	}
 
 	stop() {
+		this.stopped = true;
 		if (this.timer) {
 			clearTimeout(this.timer);
 			this.timer = null;
+		}
+		if (this.rescanTimeout) {
+			clearTimeout(this.rescanTimeout);
+			this.rescanTimeout = null;
 		}
 	}
 
@@ -66,9 +76,14 @@ export class ReminderScheduler {
 	}
 
 	scheduleNext() {
+		if (this.stopped) return;
 		if (this.timer) {
 			clearTimeout(this.timer);
 			this.timer = null;
+		}
+		if (this.rescanTimeout) {
+			clearTimeout(this.rescanTimeout);
+			this.rescanTimeout = null;
 		}
 		if (!this.plugin.settings.reminder.enabled) return;
 
@@ -88,7 +103,7 @@ export class ReminderScheduler {
 		if (delayMs <= 0) {
 			this.doNotify(nearest.task);
 			// 延迟再扫描下一个，给移动端渲染缓冲（避免多 Modal 瞬间堆叠）
-			setTimeout(() => this.scheduleNext(), 300);
+			this.rescanTimeout = setTimeout(() => this.scheduleNext(), 300);
 		} else {
 			this.debugLog(`⏱️ Next reminder in ${Math.round(delayMs / 1000)}s: ${nearest.task.content.slice(0, 30)}`);
 			// ✅ 定时器回调改为重新扫描，而非直接通知陈旧闭包数据
@@ -204,6 +219,8 @@ export class ReminderScheduler {
 	}
 
 	private showReminderModal(task: Task) {
+		if (this.stopped) return;
+
 		// 同一任务的弹窗已存在 → 跳过
 		if (this.activeModalTaskId === task.id) {
 			this.debugLog(`⏭️ SKIP modal (already shown for this task): ${task.id}`);
@@ -231,6 +248,7 @@ export class ReminderScheduler {
 	}
 
 	private async handleDone(task: Task) {
+		if (this.stopped) return;
 		try {
 			const fresh = await this.getFreshTask(task);
 			if (!fresh) {
@@ -257,6 +275,7 @@ export class ReminderScheduler {
 	}
 
 	private async handleSnooze(task: Task, minutes: number) {
+		if (this.stopped) return;
 		try {
 			if (!task.reminderTime) {
 				this.scheduleNext();
@@ -277,6 +296,7 @@ export class ReminderScheduler {
 	}
 
 	private handleMute(task: Task) {
+		if (this.stopped) return;
 		task.isMuted = true;
 		this.notifiedKeys.delete(task.id);
 		new Notice(`🔇 今日不再提醒: ${task.content}`);

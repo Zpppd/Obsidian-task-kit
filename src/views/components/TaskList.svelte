@@ -1,12 +1,14 @@
 <script lang="ts">
   import { App } from 'obsidian';
+  import type { Writable } from 'svelte/store';
   import type { Task } from '../../types/task';
   import type { TimeTrackerService } from '../../services/TimeTrackerService';
   import type { TaskParser } from '../../parser/TaskParser';
   import TaskItem from './TaskItem.svelte';
   import FilterBar from './FilterBar.svelte';
 
-  export let tasks: Task[] = [];
+  // ✅ tasks 为 Writable store：宿主（TaskPanelView）更新 store 时，本组件自动响应重渲染
+  export let tasks: Writable<Task[]>;
   export let onToggle: (task: Task) => void;
   export let onClick: (task: Task) => void;
   export let onFilterChange: (filterType: string, value: any) => void;
@@ -46,7 +48,7 @@
 
   // 计算筛选后的任务
   $: {
-    filteredTasks = tasks.filter(task => {
+    filteredTasks = $tasks.filter(task => {
       // 状态筛选
       if (statusFilter !== 'all') {
         if (statusFilter === 'pending' && task.status !== 'pending') return false;
@@ -109,19 +111,19 @@
       <div class="empty-state">
         <div class="empty-icon">📋</div>
         <div class="empty-text">
-          {tasks.length === 0 ? '暂无任务' : '没有符合条件的任务'}
+          {$tasks.length === 0 ? '暂无任务' : '没有符合条件的任务'}
         </div>
       </div>
     {:else}
-      {#each Array.from(groupedTasks.entries()) as [fileName, fileTasks]}
+      {#each Array.from(groupedTasks.entries()) as [fileName, fileTasks] (fileName)}
         <div class="file-group">
           <div class="file-group-header">
             <span class="file-name">📄 {fileName}</span>
             <span class="task-count">{fileTasks.length}</span>
           </div>
-          
+
           <div class="file-tasks">
-            {#each fileTasks as task}
+            {#each fileTasks as task (task.id)}
               <TaskItem
                 {task}
                 {onToggle}

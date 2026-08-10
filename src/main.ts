@@ -10,7 +10,7 @@ import { DEFAULT_SETTINGS, type PluginSettings } from './types/settings';
 import { TimeTrackingSettingsTab } from './settings/TimeTrackingSettingsTab';
 import { DateTimeEditModal } from './modals/DateTimeEditModal';
 
-export default class TaskMasterProPlugin extends Plugin {
+export default class TaskKitPlugin extends Plugin {
 	taskParser!: TaskParser;
 	timeTrackerService!: TimeTrackerService;
 	taskManagerService!: TaskManagerService;
@@ -45,13 +45,13 @@ export default class TaskMasterProPlugin extends Plugin {
 		// 提醒调度：等布局就绪后加载任务缓存并启动
 		this.app.workspace.onLayoutReady(async () => {
 			try {
-				console.log('[TaskMasterPro] Layout ready, initializing reminder scheduler...');
+				console.log('[TaskKit] Layout ready, initializing reminder scheduler...');
 				await this.taskManagerService.loadAllTasks();
 				this.reminderScheduler = new ReminderScheduler(this);
 				this.reminderScheduler.start();
-				console.log('[TaskMasterPro] Reminder scheduler started successfully');
+				console.log('[TaskKit] Reminder scheduler started successfully');
 			} catch (error) {
-				console.error('[TaskMasterPro] Failed to start reminder scheduler:', error);
+				console.error('[TaskKit] Failed to start reminder scheduler:', error);
 			}
 		});
 
@@ -177,7 +177,7 @@ export default class TaskMasterProPlugin extends Plugin {
 					const cmView = editor.cm;
 
 					if (!cmView) {
-						console.error('[CheckboxInterceptor] CodeMirror view not found');
+						console.error('[TaskKit:CheckboxInterceptor] CodeMirror view not found');
 						return;
 					}
 
@@ -188,7 +188,7 @@ export default class TaskMasterProPlugin extends Plugin {
 
 					const activeFile = this.app.workspace.getActiveFile();
 					if (!activeFile) {
-						console.error('[CheckboxInterceptor] No active file');
+						console.error('[TaskKit:CheckboxInterceptor] No active file');
 						return;
 					}
 
@@ -196,14 +196,14 @@ export default class TaskMasterProPlugin extends Plugin {
 					const task = tasks.find(t => t.line === lineNumber);
 
 					if (!task) {
-						console.warn('[CheckboxInterceptor] Task not found at line', lineNumber);
+						console.warn('[TaskKit:CheckboxInterceptor] Task not found at line', lineNumber);
 						return;
 					}
 
 					await this.timeTrackerService.toggleTaskStatus(task);
 
 				} catch (error) {
-					console.error('[CheckboxInterceptor] Failed to handle checkbox click:', error);
+					console.error('[TaskKit:CheckboxInterceptor] Failed to handle checkbox click:', error);
 					new Notice('处理checkbox点击失败，请查看控制台');
 				}
 			};
@@ -413,12 +413,12 @@ export default class TaskMasterProPlugin extends Plugin {
 	private showReminderStatus() {
 		if (!this.reminderScheduler) {
 			new Notice('⚠️ 提醒调度器未启动');
-			console.log('[TaskMasterPro] Reminder scheduler not initialized');
+			console.log('[TaskKit] Reminder scheduler not initialized');
 			return;
 		}
 
 		const diag = this.reminderScheduler.getDiagnostics();
-		console.log('[TaskMasterPro] Reminder Status:', JSON.stringify(diag, null, 2));
+		console.log('[TaskKit] Reminder Status:', JSON.stringify(diag, null, 2));
 		new Notice(
 			`🧠 缓存中 ${diag.totalTasksInCache} 个任务，${diag.tasksWithReminder} 个有待提醒`
 		);

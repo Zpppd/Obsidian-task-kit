@@ -3,9 +3,9 @@ import moment from 'moment';
 import { TaskStatus } from '../types/task';
 import type { Task } from '../types/task';
 import { ReminderModal } from '../ui/ReminderModal';
-import type TaskMasterProPlugin from '../main';
+import type TaskKitPlugin from '../main';
 
-const LOG = '[ReminderScheduler]';
+const LOG = '[TaskKit:ReminderScheduler]';
 
 export class ReminderScheduler {
 	private timer: ReturnType<typeof setTimeout> | null = null;
@@ -13,7 +13,7 @@ export class ReminderScheduler {
 	private notifiedKeys: Map<string, { content: string }> = new Map();
 	private activeModalTaskId: string | null = null;
 
-	constructor(private plugin: TaskMasterProPlugin) {}
+	constructor(private plugin: TaskKitPlugin) {}
 
 	/** 诊断日志：仅在调试模式下输出 */
 	private debugLog(...args: unknown[]): void {
@@ -183,7 +183,7 @@ export class ReminderScheduler {
 			const ElectronNotification = electron?.remote?.Notification || electron?.Notification;
 			if (ElectronNotification) {
 				const n = new ElectronNotification({
-					title: '⏰ Task Master Pro',
+					title: '⏰ TaskKit',
 					body: `${task.content}\n${task.file.path}`,
 				});
 				n.on?.('click', () => { n.close(); this.showReminderModal(task); });
@@ -191,7 +191,7 @@ export class ReminderScheduler {
 				return;
 			}
 			if (win.Notification && win.Notification.permission === 'granted') {
-				const n = new win.Notification('⏰ Task Master Pro', {
+				const n = new win.Notification('⏰ TaskKit', {
 					body: `${task.content}\n${task.file.path}`,
 				});
 				n.onclick = () => { n.close(); this.showReminderModal(task); };

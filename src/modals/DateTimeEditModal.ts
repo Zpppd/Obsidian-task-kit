@@ -380,7 +380,7 @@ export class DateTimeEditModal extends Modal {
 				}
 				this.close();
 			} catch (error) {
-				console.error('[DateTimeEditModal] Failed to clear:', error);
+				console.error('[TaskKit:DateTimeEditModal] Failed to clear:', error);
 				this.showError('操作失败，请重试');
 			}
 		});
@@ -419,7 +419,7 @@ export class DateTimeEditModal extends Modal {
 			await ReminderQuickSet.setReminderTime(this.task, target, this.taskParser);
 			this.close();
 		} catch (error) {
-			console.error('[DateTimeEditModal] Failed to set reminder:', error);
+			console.error('[TaskKit:DateTimeEditModal] Failed to set reminder:', error);
 			this.showError('设置失败，请重试');
 		}
 	}
@@ -449,7 +449,7 @@ export class DateTimeEditModal extends Modal {
 			await this.timeTrackerService.updateTrackingTime(this.task, startTime, endTime);
 			this.close();
 		} catch (error) {
-			console.error('[DateTimeEditModal] Failed to update tracking time:', error);
+			console.error('[TaskKit:DateTimeEditModal] Failed to update tracking time:', error);
 			this.showError('更新失败，请重试');
 		}
 	}

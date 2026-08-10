@@ -4,7 +4,7 @@ import type { Task } from '../types/task';
 import { TaskStatus } from '../types/task';
 import { TaskParser } from '../parser/TaskParser';
 import { TimeTemplateRenderer } from '../utils/TimeTemplateRenderer';
-import type TaskMasterProPlugin from '../main';
+import type TaskKitPlugin from '../main';
 
 /**
  * 时间追踪服务
@@ -15,9 +15,9 @@ import type TaskMasterProPlugin from '../main';
 export class TimeTrackerService {
 	private app: App;
 	private taskParser: TaskParser;
-	private plugin: TaskMasterProPlugin;
+	private plugin: TaskKitPlugin;
 
-	constructor(app: App, taskParser: TaskParser, plugin: TaskMasterProPlugin) {
+	constructor(app: App, taskParser: TaskParser, plugin: TaskKitPlugin) {
 		this.app = app;
 		this.taskParser = taskParser;
 		this.plugin = plugin;

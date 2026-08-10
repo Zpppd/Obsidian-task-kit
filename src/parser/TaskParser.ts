@@ -39,7 +39,7 @@ export class TaskParser {
 			
 			// ⚠️ 防御性编程：确保 content 不为 undefined 或 null
 			if (content === undefined || content === null) {
-				console.warn(`[TaskParser] File content is empty for ${file.path}`);
+				console.warn(`[TaskKit:TaskParser] File content is empty for ${file.path}`);
 				return [];
 			}
 			
@@ -58,7 +58,7 @@ export class TaskParser {
 
 			return tasks;
 		} catch (error) {
-			console.error(`[TaskParser] Failed to parse file ${file.path}:`, error);
+			console.error(`[TaskKit:TaskParser] Failed to parse file ${file.path}:`, error);
 			return [];
 		}
 	}
@@ -263,7 +263,7 @@ export class TaskParser {
 			
 			// ⚠️ 防御性编程：确保 content 不为 undefined 或 null
 			if (content === undefined || content === null) {
-				console.error(`[TaskParser] Cannot update task: file content is empty for ${task.file.path}`);
+				console.error(`[TaskKit:TaskParser] Cannot update task: file content is empty for ${task.file.path}`);
 				throw new Error(`File content is empty: ${task.file.path}`);
 			}
 			
@@ -279,10 +279,10 @@ export class TaskParser {
 				task.originalLine = newLine;
 				task.parsedAt = Date.now();
 			} else {
-				console.warn(`[TaskParser] Task line ${task.line} is out of range (file has ${lines.length} lines)`);
+				console.warn(`[TaskKit:TaskParser] Task line ${task.line} is out of range (file has ${lines.length} lines)`);
 			}
 		} catch (error) {
-			console.error(`[TaskParser] Failed to update task line:`, error);
+			console.error(`[TaskKit:TaskParser] Failed to update task line:`, error);
 			throw error;
 		}
 	}

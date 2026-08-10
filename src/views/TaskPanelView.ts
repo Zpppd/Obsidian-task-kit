@@ -5,7 +5,7 @@ import { TaskParser } from '../parser/TaskParser';
 import { TimeTrackerService } from '../services/TimeTrackerService';
 import { TaskManagerService } from '../services/TaskManagerService';
 import { TaskList } from './components';
-import type TaskMasterProPlugin from '../main';
+import type TaskKitPlugin from '../main';
 
 export const TASK_PANEL_VIEW_TYPE = 'task-kit-panel';
 
@@ -13,7 +13,7 @@ export class TaskPanelView extends ItemView {
   private taskParser: TaskParser;
   private timeTrackerService: TimeTrackerService;
   private taskManagerService: TaskManagerService;
-  private plugin: TaskMasterProPlugin;
+  private plugin: TaskKitPlugin;
   private tasks: Task[] = [];
   private svelteComponent: ReturnType<typeof mount> | null = null;
   
@@ -31,7 +31,7 @@ export class TaskPanelView extends ItemView {
     taskParser: TaskParser, 
     timeTrackerService: TimeTrackerService, 
     taskManagerService: TaskManagerService,
-    plugin: TaskMasterProPlugin
+    plugin: TaskKitPlugin
   ) {
     super(leaf);
     this.taskParser = taskParser;
@@ -45,7 +45,7 @@ export class TaskPanelView extends ItemView {
   }
 
   getDisplayText(): string {
-    return 'Task Master Pro';
+    return 'TaskKit';
   }
 
   getIcon(): string {
@@ -61,7 +61,7 @@ export class TaskPanelView extends ItemView {
       const container = this.contentEl;
 
       if (!container) {
-        console.error('[TaskPanelView] Container element not found');
+        console.error('[TaskKit:TaskPanelView] Container element not found');
         new Notice('Task Panel: 容器初始化失败');
         return;
       }
@@ -89,7 +89,7 @@ export class TaskPanelView extends ItemView {
       this.registerEventSubscription();
 
     } catch (error) {
-      console.error('[TaskPanelView] Failed to open view:', error);
+      console.error('[TaskKit:TaskPanelView] Failed to open view:', error);
       new Notice('Task Panel: 打开失败，请查看控制台');
     }
   }
@@ -126,7 +126,7 @@ export class TaskPanelView extends ItemView {
               this.updateView();
             }
           } catch (error) {
-            console.error('[TaskPanelView] Failed to update view after cache update:', error);
+            console.error('[TaskKit:TaskPanelView] Failed to update view after cache update:', error);
           }
         }, 100); // ✅ 短暂延迟确保 Svelte 渲染完成
       })
@@ -145,7 +145,7 @@ export class TaskPanelView extends ItemView {
               this.tasks = this.taskManagerService.getAllTasksFromCache();
               this.updateView();
             } catch (error) {
-              console.error('[TaskPanelView] Failed to update view after file delete:', error);
+              console.error('[TaskKit:TaskPanelView] Failed to update view after file delete:', error);
             }
           }, 100);
         }
@@ -161,7 +161,7 @@ export class TaskPanelView extends ItemView {
               this.tasks = this.taskManagerService.getAllTasksFromCache();
               this.updateView();
             } catch (error) {
-              console.error('[TaskPanelView] Failed to update view after file rename:', error);
+              console.error('[TaskKit:TaskPanelView] Failed to update view after file rename:', error);
             }
           }, 100);
         }
@@ -180,7 +180,7 @@ export class TaskPanelView extends ItemView {
       this.tasks = allTasks;
       // 注意：不在这里调用 updateView()，由调用方决定何时更新视图
     } catch (error) {
-      console.error('[TaskPanelView] Failed to load tasks:', error);
+      console.error('[TaskKit:TaskPanelView] Failed to load tasks:', error);
       throw error;
     }
   }
@@ -204,7 +204,7 @@ export class TaskPanelView extends ItemView {
       await this.taskManagerService.refreshAllTasks();
       // refreshAllTasks 会触发 'cache-updated' 事件，事件订阅自动调用 updateView()
     } catch (error) {
-      console.error('[TaskPanelView] Failed to refresh:', error);
+      console.error('[TaskKit:TaskPanelView] Failed to refresh:', error);
       new Notice('刷新失败，请查看控制台');
     }
   };
@@ -274,7 +274,7 @@ export class TaskPanelView extends ItemView {
       const freshTask = await this.getFreshTask(task);
       
       if (!freshTask) {
-        console.error('[TaskPanelView] Could not find fresh task reference');
+        console.error('[TaskKit:TaskPanelView] Could not find fresh task reference');
         new Notice('无法找到任务，请刷新面板');
         return;
       }
@@ -289,7 +289,7 @@ export class TaskPanelView extends ItemView {
       await this.refreshTasks();
       
     } catch (error) {
-      console.error('[TaskPanelView] Failed to toggle task:', error);
+      console.error('[TaskKit:TaskPanelView] Failed to toggle task:', error);
       new Notice('切换任务状态失败，请查看控制台');
     }
   }
@@ -304,7 +304,7 @@ export class TaskPanelView extends ItemView {
       const file = oldTask.file;
       
       if (!file) {
-        console.error('[TaskPanelView] File not found in task');
+        console.error('[TaskKit:TaskPanelView] File not found in task');
         return null;
       }
       
@@ -312,13 +312,13 @@ export class TaskPanelView extends ItemView {
       const freshTask = tasks.find(t => t.line === oldTask.line);
       
       if (!freshTask) {
-        console.error('[TaskPanelView] Task not found at line:', oldTask.line);
+        console.error('[TaskKit:TaskPanelView] Task not found at line:', oldTask.line);
         return null;
       }
       
       return freshTask;
     } catch (error) {
-      console.error('[TaskPanelView] Failed to get fresh task:', error);
+      console.error('[TaskKit:TaskPanelView] Failed to get fresh task:', error);
       return null;
     }
   }
@@ -344,7 +344,7 @@ export class TaskPanelView extends ItemView {
         }, 100);
       }
     } catch (error) {
-      console.error('[TaskPanelView] Failed to open task location:', error);
+      console.error('[TaskKit:TaskPanelView] Failed to open task location:', error);
       new Notice('无法打开任务位置');
     }
   }
@@ -370,7 +370,7 @@ export class TaskPanelView extends ItemView {
   private updateView(): void {
     const container = this.contentEl;
     if (!container) {
-      console.warn('[TaskPanelView] Container not found, skipping update');
+      console.warn('[TaskKit:TaskPanelView] Container not found, skipping update');
       return;
     }
 
@@ -402,7 +402,7 @@ export class TaskPanelView extends ItemView {
         }
       });
     } catch (error) {
-      console.error('[TaskPanelView] Failed to update view:', error);
+      console.error('[TaskKit:TaskPanelView] Failed to update view:', error);
     }
   }
 }

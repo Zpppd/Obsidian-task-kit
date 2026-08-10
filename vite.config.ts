@@ -52,7 +52,7 @@ export default defineConfig({
   build: {
     lib: {
       entry: resolve(__dirname, 'src/main.ts'),
-      name: 'TaskMasterPro',
+      name: 'TaskKit',
       fileName: () => 'main.js',
       formats: ['cjs']
     },

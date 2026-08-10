@@ -67,7 +67,7 @@ export class TaskManagerService extends Events {
 						const tasks = await this.taskParser.parseFile(file);
 						return { filePath: file.path, tasks, success: true };
 					} catch (error) {
-						console.error(`[TaskManagerService] Failed to parse file ${file.path}:`, error);
+						console.error(`[TaskKit:TaskManagerService] Failed to parse file ${file.path}:`, error);
 						return { filePath: file.path, tasks: [], success: false };
 					}
 				});
@@ -83,7 +83,7 @@ export class TaskManagerService extends Events {
 			
 			return this.getAllTasksFromCache();
 		} catch (error) {
-			console.error('[TaskManagerService] Failed to load all tasks:', error);
+			console.error('[TaskKit:TaskManagerService] Failed to load all tasks:', error);
 			throw error;
 		} finally {
 			this.isLoading = false;
@@ -115,7 +115,7 @@ export class TaskManagerService extends Events {
 			// ✅ 主动通知所有订阅者：缓存已更新
 			this.trigger('cache-updated', file);
 		} catch (error) {
-			console.error(`[TaskManagerService] Failed to refresh file ${file.path}:`, error);
+			console.error(`[TaskKit:TaskManagerService] Failed to refresh file ${file.path}:`, error);
 			this.tasksCache.delete(file.path);
 		}
 	}
@@ -177,7 +177,7 @@ export class TaskManagerService extends Events {
 						const tasks = await this.taskParser.parseFile(file);
 						return { filePath: file.path, tasks, success: true };
 					} catch (error) {
-						console.error(`[TaskManagerService] Failed to parse file ${file.path}:`, error);
+						console.error(`[TaskKit:TaskManagerService] Failed to parse file ${file.path}:`, error);
 						return { filePath: file.path, tasks: [], success: false };
 					}
 				});
@@ -195,7 +195,7 @@ export class TaskManagerService extends Events {
 			// 传递 null 表示"全量刷新"（非单文件变更）
 			this.trigger('cache-updated', null);
 		} catch (error) {
-			console.error('[TaskManagerService] Failed to refresh all tasks:', error);
+			console.error('[TaskKit:TaskManagerService] Failed to refresh all tasks:', error);
 		}
 	}
 

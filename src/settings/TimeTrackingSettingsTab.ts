@@ -1,11 +1,11 @@
 import { App, PluginSettingTab, Setting, Notice } from 'obsidian';
-import type TaskMasterProPlugin from '../main';
+import type TaskKitPlugin from '../main';
 import { TimeTemplateRenderer } from '../utils/TimeTemplateRenderer';
 
 export class TimeTrackingSettingsTab extends PluginSettingTab {
-	plugin: TaskMasterProPlugin;
+	plugin: TaskKitPlugin;
 
-	constructor(app: App, plugin: TaskMasterProPlugin) {
+	constructor(app: App, plugin: TaskKitPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}

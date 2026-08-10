@@ -1,4 +1,4 @@
-import { App, TFile, TAbstractFile, Events } from 'obsidian';
+import { App, TFile, TAbstractFile, Events, type EventRef } from 'obsidian';
 import type { Task } from '../types/task';
 import { TaskParser } from '../parser/TaskParser';
 import type { PluginSettings } from '../types/settings';
@@ -18,28 +18,41 @@ export class TaskManagerService extends Events {
 	private app: App;
 	private taskParser: TaskParser;
 	private getSettings: () => PluginSettings;
-	
+	private registerEvent: (ref: EventRef) => void;
+
 	// 缓存：key 为文件路径，value 为该文件的任务数组
 	private tasksCache: Map<string, Task[]> = new Map();
-	
+
 	// 加载状态标志（防止重复加载）
 	private isLoading: boolean = false;
-	
-	// 防抖定时器
-	private refreshTimeout: ReturnType<typeof setTimeout> | null = null;
+
+	// 防抖定时器：按文件路径独立防抖（避免并发修改时互相清掉）
+	private refreshTimeouts: Map<string, ReturnType<typeof setTimeout>> = new Map();
 
 	constructor(
 		app: App,
 		taskParser: TaskParser,
-		getSettings: () => PluginSettings
+		getSettings: () => PluginSettings,
+		registerEvent: (ref: EventRef) => void,
 	) {
 		super(); // ✅ 初始化 Events
 		this.app = app;
 		this.taskParser = taskParser;
 		this.getSettings = getSettings;
-		
+		this.registerEvent = registerEvent;
+
 		// 注册文件监听器
 		this.registerFileListeners();
+	}
+
+	/**
+	 * 释放资源：清除所有待执行的防抖定时器（插件卸载时调用）
+	 */
+	dispose(): void {
+		for (const timer of this.refreshTimeouts.values()) {
+			clearTimeout(timer);
+		}
+		this.refreshTimeouts.clear();
 	}
 
 	/**
@@ -229,41 +242,42 @@ export class TaskManagerService extends Events {
 	 */
 	private registerFileListeners(): void {
 		// 监听文件修改
-		this.app.vault.on('modify', (file: TAbstractFile) => {
+		this.registerEvent(this.app.vault.on('modify', (file: TAbstractFile) => {
 			if (file instanceof TFile && !this.taskParser.shouldSkipFile(file)) {
 				this.handleFileModify(file);
 			}
-		});
-		
+		}));
+
 		// 监听文件删除
-		this.app.vault.on('delete', (file: TAbstractFile) => {
+		this.registerEvent(this.app.vault.on('delete', (file: TAbstractFile) => {
 			if (file instanceof TFile) {
 				this.removeFileCache(file.path);
 			}
-		});
-		
+		}));
+
 		// 监听文件重命名
-		this.app.vault.on('rename', (file: TAbstractFile, oldPath: string) => {
+		this.registerEvent(this.app.vault.on('rename', (file: TAbstractFile, oldPath: string) => {
 			if (file instanceof TFile) {
 				this.renameFileCache(oldPath, file.path);
 			}
-		});
+		}));
 	}
 
 	/**
-	 * 处理文件修改事件（带防抖）
+	 * 处理文件修改事件（按文件粒度防抖）
+	 *
+	 * 使用 Map 按文件路径独立防抖：1 秒内修改多个不同文件时，
+	 * 每个文件都会触发自己的刷新，互不干扰。
 	 * @private
 	 */
 	private handleFileModify(file: TFile): void {
-		// 清除之前的定时器
-		if (this.refreshTimeout) {
-			clearTimeout(this.refreshTimeout);
+		const existing = this.refreshTimeouts.get(file.path);
+		if (existing) {
+			clearTimeout(existing);
 		}
-
-		// 设置新的防抖定时器（1秒）
-		this.refreshTimeout = setTimeout(async () => {
+		this.refreshTimeouts.set(file.path, setTimeout(async () => {
+			this.refreshTimeouts.delete(file.path);
 			await this.refreshSingleFile(file);
-			this.refreshTimeout = null;
-		}, 1000);
+		}, 1000));
 	}
 }

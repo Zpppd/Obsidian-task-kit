@@ -29,7 +29,8 @@ export default class TaskKitPlugin extends Plugin {
 		this.taskManagerService = new TaskManagerService(
 			this.app,
 			this.taskParser,
-			() => this.settings
+			() => this.settings,
+			(ref) => this.registerEvent(ref)
 		);
 
 		this.registerEditorCheckboxInterceptor();
@@ -113,6 +114,7 @@ export default class TaskKitPlugin extends Plugin {
 	}
 
 	onunload() {
+		this.taskManagerService?.dispose();
 		if (this.reminderScheduler) {
 			this.reminderScheduler.stop();
 		}

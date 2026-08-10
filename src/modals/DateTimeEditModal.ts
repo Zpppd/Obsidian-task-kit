@@ -96,9 +96,9 @@ export class DateTimeEditModal extends Modal {
 		seg.all.forEach(inp => inp.addEventListener('input', updateHint));
 		updateHint();
 
-		// 存储引用供确认时使用
-		(el as any)._seg = seg;
-		(el as any)._hintEl = hintEl;
+		// 存储引用供确认时使用（存在 section 上，与追踪模式一致；onReminderConfirm 从 section 读取）
+		(section as any)._seg = seg;
+		(section as any)._hintEl = hintEl;
 	}
 
 	private updateReminderHint(seg: SegFields, el: HTMLElement): void {

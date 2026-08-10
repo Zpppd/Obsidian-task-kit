@@ -36,6 +36,9 @@ export interface ReminderSettings {
  * 插件完整设置
  */
 export interface PluginSettings {
+  /** 调试模式（显示测试命令与详细日志，用于开发） */
+  debug: boolean;
+
   /** 是否启用时间追踪功能 */
   enableTimeTracking: boolean;
 
@@ -53,6 +56,8 @@ export interface PluginSettings {
  * 默认设置
  */
 export const DEFAULT_SETTINGS: PluginSettings = {
+  debug: false,
+
   enableTimeTracking: true, // ✅ 默认开启，保持原有行为
 
   timeTracking: {

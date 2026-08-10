@@ -107,7 +107,7 @@ export class TimeTrackerService {
 			const s = this.plugin.settings.timeTracking;
 			let marker = '';
 			if (task.timeTracking.endTime && task.timeTracking.durationMinutes !== undefined && task.timeTracking.startTime) {
-				const durationDate = this.formatDuration(task.timeTracking.durationMinutes);
+				const durationDate = TimeTemplateRenderer.formatDuration(task.timeTracking.durationMinutes);
 				marker = TimeTemplateRenderer.render(
 					s.completedTemplate,
 					task.timeTracking.startTime,
@@ -133,14 +133,6 @@ export class TimeTrackerService {
 			adjustedEndTime.add(1, 'day');
 		}
 		return Math.max(0, adjustedEndTime.diff(startTime, 'minutes'));
-	}
-
-	private formatDuration(minutes: number): string {
-		const hours = Math.floor(minutes / 60);
-		const remainingMinutes = minutes % 60;
-		if (hours > 0 && remainingMinutes > 0) return `${hours}小时${remainingMinutes}分钟`;
-		if (hours > 0) return `${hours}小时`;
-		return `${remainingMinutes}分钟`;
 	}
 
 	private getCurrentTime(): moment.Moment {
@@ -226,7 +218,7 @@ export class TimeTrackerService {
 		switch (format) {
 			case 'range':
 				if (task.timeTracking.endTime) {
-					const durationDate = this.formatDuration(task.timeTracking.durationMinutes || 0);
+					const durationDate = TimeTemplateRenderer.formatDuration(task.timeTracking.durationMinutes || 0);
 					return TimeTemplateRenderer.render(
 						this.plugin.settings.timeTracking.completedTemplate,
 						task.timeTracking.startTime,

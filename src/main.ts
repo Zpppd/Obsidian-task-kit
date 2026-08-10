@@ -68,29 +68,32 @@ export default class TaskMasterProPlugin extends Plugin {
 			}
 		});
 
-		this.addCommand({
-			id: 'parse-all-tasks',
-			name: 'Parse All Tasks (Test)',
-			callback: async () => {
-				await this.testParseAllTasks();
-			}
-		});
+		// 以下测试命令仅在调试模式下注册
+		if (this.settings.debug) {
+			this.addCommand({
+				id: 'parse-all-tasks',
+				name: 'Parse All Tasks (Test)',
+				callback: async () => {
+					await this.testParseAllTasks();
+				}
+			});
 
-		this.addCommand({
-			id: 'parse-current-file-tasks',
-			name: 'Parse Current File Tasks (Test)',
-			callback: async () => {
-				await this.testParseCurrentFile();
-			}
-		});
+			this.addCommand({
+				id: 'parse-current-file-tasks',
+				name: 'Parse Current File Tasks (Test)',
+				callback: async () => {
+					await this.testParseCurrentFile();
+				}
+			});
 
-		this.addCommand({
-			id: 'test-time-tracker',
-			name: 'Test Time Tracker Service',
-			callback: async () => {
-				await this.testTimeTracker();
-			}
-		});
+			this.addCommand({
+				id: 'test-time-tracker',
+				name: 'Test Time Tracker Service',
+				callback: async () => {
+					await this.testTimeTracker();
+				}
+			});
+		}
 
 		this.addCommand({
 			id: 'reminder-status',

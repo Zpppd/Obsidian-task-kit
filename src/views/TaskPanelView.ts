@@ -15,7 +15,7 @@ export class TaskPanelView extends ItemView {
   private taskManagerService: TaskManagerService;
   private plugin: TaskMasterProPlugin;
   private tasks: Task[] = [];
-  private svelteComponent: any = null;
+  private svelteComponent: ReturnType<typeof mount> | null = null;
   
   // ✅ 新增：保存用户的筛选状态（避免组件重建时丢失）
   private filterState: {
@@ -58,8 +58,8 @@ export class TaskPanelView extends ItemView {
       await this.loadTasks();
 
       // 获取容器并挂载 Svelte 组件
-      const container = this.containerEl.children[1];
-      
+      const container = this.contentEl;
+
       if (!container) {
         console.error('[TaskPanelView] Container element not found');
         new Notice('Task Panel: 容器初始化失败');
@@ -368,7 +368,7 @@ export class TaskPanelView extends ItemView {
    * ✅ 优化：传递筛选状态，避免组件重建时丢失用户选择
    */
   private updateView(): void {
-    const container = this.containerEl.children[1];
+    const container = this.contentEl;
     if (!container) {
       console.warn('[TaskPanelView] Container not found, skipping update');
       return;

@@ -21,6 +21,7 @@
     "vite": "^8.0.4"
   },
   "dependencies": {
+    "moment": "^2.29.4",
     "obsidian": "^1.12.3"
   }
 }

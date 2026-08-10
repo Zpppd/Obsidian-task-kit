@@ -15,6 +15,13 @@ export class ReminderScheduler {
 
 	constructor(private plugin: TaskMasterProPlugin) {}
 
+	/** 诊断日志：仅在调试模式下输出 */
+	private debugLog(...args: unknown[]): void {
+		if (this.plugin.settings.debug) {
+			console.log(LOG, ...args);
+		}
+	}
+
 	start() {
 		this.scheduleNext();
 		this.plugin.registerEvent(
@@ -71,7 +78,7 @@ export class ReminderScheduler {
 
 		// [DIAGNOSTIC] 记录每次扫描结果
 		const tasksWithReminder = tasks.filter(t => !!t.reminderTime && t.status !== TaskStatus.Completed).length;
-		console.log(LOG,
+		this.debugLog(
 			`🔍 scheduleNext | cache:${tasks.length} tasks | withReminder:${tasksWithReminder} | notified:${this.notifiedKeys.size} | nearest:${nearest ? `${nearest.task.content.slice(0, 30)} @ ${nearest.time.format('HH:mm')}` : 'none'}`,
 		);
 
@@ -83,7 +90,7 @@ export class ReminderScheduler {
 			// 延迟再扫描下一个，给移动端渲染缓冲（避免多 Modal 瞬间堆叠）
 			setTimeout(() => this.scheduleNext(), 300);
 		} else {
-			console.log(LOG, `⏱️ Next reminder in ${Math.round(delayMs / 1000)}s: ${nearest.task.content.slice(0, 30)}`);
+			this.debugLog(`⏱️ Next reminder in ${Math.round(delayMs / 1000)}s: ${nearest.task.content.slice(0, 30)}`);
 			// ✅ 定时器回调改为重新扫描，而非直接通知陈旧闭包数据
 			this.timer = setTimeout(() => {
 				this.scheduleNext();
@@ -106,14 +113,14 @@ export class ReminderScheduler {
 					// 找到同一任务（新行号）→ 更新 notifiedKeys 中的 key
 					this.notifiedKeys.delete(key);
 					this.notifiedKeys.set(task.id, info);
-					console.log(LOG, `🔧 Updated notified key (line changed): ${key} → ${task.id}`);
+					this.debugLog(`🔧 Updated notified key (line changed): ${key} → ${task.id}`);
 				}
 			}
 
 			if (!task || !task.reminderTime || task.status === TaskStatus.Completed) {
 				// [DIAGNOSTIC] 记录防重键被清除的原因
 				const reason = !task ? 'task gone' : !task.reminderTime ? 'no reminder' : 'completed';
-				console.log(LOG, `🔴 NOTIFIED KEY REMOVED [${reason}]: ${key}`);
+				this.debugLog(`🔴 NOTIFIED KEY REMOVED [${reason}]: ${key}`);
 				this.notifiedKeys.delete(key);
 			}
 		}
@@ -140,28 +147,28 @@ export class ReminderScheduler {
 		const fresh = freshTasks.find(t => t.id === task.id);
 
 		if (!fresh) {
-			console.log(LOG, `⏭️ SKIP notify (task no longer exists): ${task.id}`);
+			this.debugLog(`⏭️ SKIP notify (task no longer exists): ${task.id}`);
 			return;
 		}
 		if (!fresh.reminderTime) {
-			console.log(LOG, `⏭️ SKIP notify (reminder removed): ${task.id}`);
+			this.debugLog(`⏭️ SKIP notify (reminder removed): ${task.id}`);
 			return;
 		}
 		if (fresh.status === TaskStatus.Completed) {
-			console.log(LOG, `⏭️ SKIP notify (already completed): ${task.id}`);
+			this.debugLog(`⏭️ SKIP notify (already completed): ${task.id}`);
 			return;
 		}
 		if (fresh.isMuted) {
-			console.log(LOG, `⏭️ SKIP notify (muted): ${task.id}`);
+			this.debugLog(`⏭️ SKIP notify (muted): ${task.id}`);
 			return;
 		}
 		if (fresh.reminderTime.isAfter(moment())) {
-			console.log(LOG, `⏭️ SKIP notify (not yet due, ${fresh.reminderTime.format('HH:mm')} > ${moment().format('HH:mm')}): ${task.id}`);
+			this.debugLog(`⏭️ SKIP notify (not yet due, ${fresh.reminderTime.format('HH:mm')} > ${moment().format('HH:mm')}): ${task.id}`);
 			return;
 		}
 
 		// [DIAGNOSTIC] 记录实际通知触发
-		console.log(LOG, `🔔 NOTIFYING: ${fresh.id} | ${fresh.content.slice(0, 40)}`);
+		this.debugLog(`🔔 NOTIFYING: ${fresh.id} | ${fresh.content.slice(0, 40)}`);
 		this.notifiedKeys.set(fresh.id, { content: fresh.content });
 		const { useSystemNotification, useBuiltinNotification } = this.plugin.settings.reminder;
 		if (useSystemNotification) this.trySystemNotification(fresh);
@@ -199,12 +206,12 @@ export class ReminderScheduler {
 	private showReminderModal(task: Task) {
 		// 同一任务的弹窗已存在 → 跳过
 		if (this.activeModalTaskId === task.id) {
-			console.log(LOG, `⏭️ SKIP modal (already shown for this task): ${task.id}`);
+			this.debugLog(`⏭️ SKIP modal (already shown for this task): ${task.id}`);
 			return;
 		}
 
 		// [DIAGNOSTIC] 记录 Modal 创建
-		console.log(LOG, `🪟 Showing modal for: ${task.id}`);
+		this.debugLog(`🪟 Showing modal for: ${task.id}`);
 		this.activeModalTaskId = task.id;
 		const modal = new ReminderModal(
 			this.plugin.app,

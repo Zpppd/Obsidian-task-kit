@@ -14,11 +14,29 @@ export class TimeTrackingSettingsTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
+		this.renderDebugSection(containerEl);
+		containerEl.createEl('hr');
 		this.renderTimeTrackingSection(containerEl);
 		containerEl.createEl('hr');
 		this.renderReminderSection(containerEl);
 		containerEl.createEl('hr');
 		this.renderScanSection(containerEl);
+	}
+
+	// ==================== 调试 ====================
+
+	private renderDebugSection(el: HTMLElement): void {
+		el.createEl('h2', { text: '🛠️ 调试' });
+
+		new Setting(el)
+			.setName('调试模式')
+			.setDesc('启用后注册测试命令并输出详细日志（用于开发调试）')
+			.addToggle(t =>
+				t.setValue(this.plugin.settings.debug).onChange(async v => {
+					this.plugin.settings.debug = v;
+					await this.plugin.saveSettings();
+				}),
+			);
 	}
 
 	// ==================== 时间追踪 ====================

@@ -46,6 +46,17 @@ export class TimeTemplateRenderer {
   }
 
   /**
+   * 格式化耗时为"几小时几分钟"格式（0 分钟时输出 "0分钟"）
+   */
+  static formatDuration(minutes: number): string {
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    if (hours > 0 && remainingMinutes > 0) return `${hours}小时${remainingMinutes}分钟`;
+    if (hours > 0) return `${hours}小时`;
+    return `${remainingMinutes}分钟`;
+  }
+
+  /**
    * 格式化耗时为"几天几小时几分钟"格式
    */
   private static formatDurationDate(minutes: number): string {
